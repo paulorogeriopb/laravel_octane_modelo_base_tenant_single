@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### 1.0.1 (2025-09-23)
+
+
+### Features
+
+* **custom:** primeiro commite base ([5726b1b](https://github.com/paulorogeriopb/laravel_octane_modelo_base_tenant_single/commit/5726b1b675fd4dad9f266e2e0aa360d8418cb374))
+
 ### [1.0.11](https://github.com/paulorogeriopb/laravel_octane_modelo_base/compare/v1.0.10...v1.0.11) (2025-09-23)
 
 ### [1.0.10](https://github.com/paulorogeriopb/laravel_octane_modelo_base/compare/v1.0.9...v1.0.10) (2025-09-22)
