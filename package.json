@@ -1,0 +1,39 @@
+{
+    "private": true,
+    "version": "1.0.0",
+    "scripts": {
+        "commit": "git-cz",
+        "build": "vite build",
+        "dev": "vite",
+        "release": "standard-version",
+        "release:msg": "node release-with-msg.js",
+        "release:push": "npm run release:msg && git push && git push --tags",
+        "release:minor:push": "npm run release:msg -- minor && git push && git push --tags",
+        "release:major:push": "npm run release:msg -- major && git push && git push --tags"
+    },
+    "config": {
+        "commitizen": {
+            "path": "cz-customizable",
+            "config": "./.cz-config.js"
+        }
+    },
+    "devDependencies": {
+        "@tailwindcss/forms": "^0.5.10",
+        "@tailwindcss/postcss": "^4.1.13",
+        "@tailwindcss/vite": "^4.0.0",
+        "autoprefixer": "^10.4.21",
+        "axios": "^1.7.4",
+        "commitizen": "^4.3.1",
+        "concurrently": "^9.0.1",
+        "cz-customizable": "^7.4.0",
+        "laravel-vite-plugin": "^1.2.0",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^4.1.13",
+        "vite": "^6.2.4"
+    },
+    "dependencies": {
+        "alpinejs": "^3.15.0",
+        "chart.js": "^4.5.0",
+        "sweetalert2": "^11.23.0"
+    }
+}
