@@ -12,7 +12,7 @@ services:
         extra_hosts:
             - "host.docker.internal:host-gateway"
         ports:
-            - "${APP_PORT}:8000"
+            - "${APP_PORT}:${OCTANE_PORT}"
             - "${VITE_PORT}:${VITE_PORT}"
         environment:
             WWWUSER: "${WWWUSER}"
@@ -20,10 +20,13 @@ services:
             XDEBUG_MODE: "${SAIL_XDEBUG_MODE:-off}"
             XDEBUG_CONFIG: "${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}"
             IGNITION_LOCAL_SITES_PATH: "${PWD}"
+            OCTANE_SERVER: "${OCTANE_SERVER}"
+            OCTANE_PORT: "${OCTANE_PORT}"
+
         volumes:
             - ".:/var/www/html"
         networks:
-            - nimbus_base_net
+            - nst_net
         depends_on:
             mysql:
                 condition: service_healthy
@@ -44,7 +47,7 @@ services:
         volumes:
             - mysql_data:/var/lib/mysql
         networks:
-            - nimbus_base_net
+            - nst_net
         healthcheck:
             test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}"]
             interval: 10s
@@ -64,10 +67,10 @@ services:
             mysql:
                 condition: service_healthy
         networks:
-            - nimbus_base_net
+            - nst_net
 
 networks:
-    nimbus_base_net:
+    nst_net:
         driver: bridge
 
 volumes:

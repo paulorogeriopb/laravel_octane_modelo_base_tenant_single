@@ -60,6 +60,23 @@ elif [ "$APP_ENV" = "production" ]; then
     gosu sail npm run build
 fi
 
+# Remove locks do Octane
+rm -f /var/www/html/storage/octane/*.lock || true
+pkill -f "artisan octane:start" || true
+
+
+
+# -----------------------------
+# Exporta variáveis do .env de forma segura
+# -----------------------------
+if [ -f /var/www/html/.env ]; then
+    set -a
+    # Ignora linhas comentadas e vazias
+    grep -v -E '^\s*#|^\s*$' /var/www/html/.env | sed 's/\r//g' > /tmp/env_vars
+    # Fonte do arquivo para exportar variáveis
+    . /tmp/env_vars
+    set +a
+fi
 # -----------------------------
 # Inicia supervisord
 # -----------------------------

@@ -1,4 +1,4 @@
-# Projeto Base Laravel 12
+# Projeto Base Laravel 12 Octane Tanant Single
 
 Este projeto é uma base moderna e robusta para aplicações Laravel, preparada para atender desde projetos simples até arquiteturas complexas com controle de acesso (ACL), CI/CD e versionamento semântico.
 
