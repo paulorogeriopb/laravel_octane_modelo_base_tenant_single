@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\Tenant;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -12,6 +13,12 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        // Pega o primeiro tenant já criado
+        $tenant = Tenant::first();
+        if (!$tenant) {
+            $tenant = Tenant::create(['name' => 'Default Tenant']);
+        }
+
         $superAdmin = User::firstOrCreate(
             ['email' => 'superadmin@gmail.com'],
             [
@@ -19,9 +26,9 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('12345678'),
                 'email_verified_at' => now(),
                 'user_status_id' => 1,  // Define status ativo
+                'tenant_id' => $tenant->id, // importante!
             ]
         );
-
         $superAdmin->assignRole('Super Admin');
 
         $admin = User::firstOrCreate(
@@ -31,9 +38,9 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('12345678'),
                 'email_verified_at' => now(),
                 'user_status_id' => 1,
+                'tenant_id' => $tenant->id,
             ]
         );
-
         $admin->assignRole('Admin');
 
         $user = User::firstOrCreate(
@@ -43,9 +50,9 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('12345678'),
                 'email_verified_at' => now(),
                 'user_status_id' => 1,
+                'tenant_id' => $tenant->id,
             ]
         );
-
         $user->assignRole('User');
     }
 }

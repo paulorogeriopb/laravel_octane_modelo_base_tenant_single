@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
+use App\Models\Tenant;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+
 use App\Notifications\ResetPasswordCodeNotification;
 
 class User extends Authenticatable implements MustVerifyEmail
@@ -62,6 +64,12 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsTo(UserStatus::class);
     }
 
+
+
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
+    }
 
 
 }
