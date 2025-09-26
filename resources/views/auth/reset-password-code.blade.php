@@ -30,9 +30,11 @@
 
             <!-- ETAPA 2: Senha -->
             <div id="step-password" class="hidden">
-                <x-password-input id="password" name="password" label="Nova Senha" required />
+                <x-password-input id="password" name="password" label="Nova Senha" />
+
                 <x-password-input id="password_confirmation" name="password_confirmation" label="Confirmar Senha" required
-                    showRules="true" />
+                    showRules="true" validateTarget="password" />
+
 
                 <div class="flex items-center justify-center mt-4">
                     <button type="submit" class="w-full py-2 mt-4 rounded btn-default-md">

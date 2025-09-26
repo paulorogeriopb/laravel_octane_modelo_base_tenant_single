@@ -38,9 +38,11 @@
                 @csrf
                 @method('PUT')
 
-                <x-password-input id="password" name="password" label="Senha" required />
+                <x-password-input id="password" name="password" label="Nova Senha" />
+
                 <x-password-input id="password_confirmation" name="password_confirmation" label="Confirmar Senha" required
-                    showRules="true" />
+                    showRules="true" validateTarget="password" />
+
 
                 <x-save-button />
 

@@ -72,9 +72,10 @@
 
     <!-- Senha (somente criação) -->
     @if (is_null($user))
-        <x-password-input id="password" name="password" label="Senha" required />
+        <x-password-input id="password" name="password" label="Nova Senha" />
+
         <x-password-input id="password_confirmation" name="password_confirmation" label="Confirmar Senha" required
-            showRules="true" />
+            showRules="true" validateTarget="password" />
     @else
         {{-- Botão para alterar senha no modo de edição --}}
         @can('users-edit-password')

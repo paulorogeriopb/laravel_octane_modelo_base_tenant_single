@@ -23,6 +23,7 @@
         }
     }
 
+    // Ícones padrão do SweetAlert2
     $alertIcons = [
         'success' => 'success',
         'error' => 'error',
@@ -30,8 +31,17 @@
         'info' => 'info',
         'status' => 'info',
     ];
-
     $icon = $alertIcons[$type] ?? 'info';
+
+    // Títulos em português
+    $alertTitles = [
+        'success' => 'Sucesso!',
+        'error' => 'Erro!',
+        'warning' => 'Aviso!',
+        'info' => 'Informação',
+        'status' => 'Status',
+    ];
+    $title = $alertTitles[$type] ?? 'Mensagem';
 @endphp
 
 @if ($message)
@@ -39,7 +49,7 @@
         ['DOMContentLoaded', 'pageshow'].forEach(ev =>
             window.addEventListener(ev, function() {
                 Swal.fire({
-                    title: @json(ucfirst($type)),
+                    title: @json($title),
                     text: @json($message),
                     icon: @json($icon),
                     confirmButtonText: "OK",

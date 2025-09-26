@@ -14,25 +14,24 @@
         @method('put')
 
         <div>
-            <x-input-label for="update_password_current_password" :value="__('Current Password')" />
-            <x-text-input id="update_password_current_password" name="current_password" type="password"
-                class="block w-full mt-1 form-input" autocomplete="current-password" />
-            <x-input-error :messages="$errors->updatePassword->get('current_password')" class="mt-2" />
+            <div>
+                <x-password-input id="update_password_current_password" name="current_password" label="Senha Atual"
+                    required="true" errorBag="updatePassword" />
+            </div>
         </div>
 
         <div>
-            <x-input-label for="update_password_password" :value="__('New Password')" />
-            <x-text-input id="update_password_password" name="password" type="password"
-                class="block w-full mt-1 form-input" autocomplete="new-password" />
-            <x-input-error :messages="$errors->updatePassword->get('password')" class="mt-2" />
+            <x-password-input id="password" name="password" label="Nova Senha" />
+
+            <x-password-input id="password_confirmation" name="password_confirmation" label="Confirmar Senha" required
+                showRules="true" validateTarget="password" />
+
+
+
+
         </div>
 
-        <div>
-            <x-input-label for="update_password_password_confirmation" :value="__('Confirm Password')" />
-            <x-text-input id="update_password_password_confirmation" name="password_confirmation" type="password"
-                class="block w-full mt-1 form-input" autocomplete="new-password" />
-            <x-input-error :messages="$errors->updatePassword->get('password_confirmation')" class="mt-2" />
-        </div>
+
 
         <div class="flex items-center gap-4">
             <x-save-button />

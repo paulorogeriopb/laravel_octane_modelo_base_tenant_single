@@ -17,8 +17,7 @@
 
 
     <div class="mt-12 content-box">
-
-
+        <x-alert />
         <div class="max-w-xl">
             @include('profile.partials.update-password-form')
         </div>

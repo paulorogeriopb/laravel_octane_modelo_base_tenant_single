@@ -20,12 +20,15 @@ class PasswordController extends Controller
         $validated = $request->validateWithBag('updatePassword', [
             'current_password' => ['required', 'current_password'],
             'password' => ['required', Password::defaults(), 'confirmed'],
+        ], [
+            // Mensagem personalizada para senha atual incorreta
+            'current_password.current_password' => 'A senha informada não confere com a senha atual.',
         ]);
 
         $request->user()->update([
             'password' => Hash::make($validated['password']),
         ]);
 
-        return back()->with('status', 'password-updated');
+        return back()->with('success', 'A senha foi atualizada com sucesso!');
     }
 }

@@ -30,12 +30,13 @@
             </div>
 
 
+            <div class="mt-4 form-group">
+                <x-password-input id="password" name="password" label="Nova Senha" />
 
-            <!-- Confirm Password -->
-            <x-password-input id="password" name="password" label="Senha" required />
-            <x-password-input id="password_confirmation" name="password_confirmation" label="Confirmar Senha" required
-                showRules="true" />
+                <x-password-input id="password_confirmation" name="password_confirmation" label="Confirmar Senha" required
+                    showRules="true" validateTarget="password" />
 
+            </div>
 
             <div class="flex items-center justify-end mt-4 ">
                 <a class="link-default" href="{{ route('login') }}">
