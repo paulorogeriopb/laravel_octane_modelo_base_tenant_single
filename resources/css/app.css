@@ -329,11 +329,11 @@
     }
 
     .form-input {
-        @apply mt-1 w-full p-3 pr-10 text-gray-600 rounded-xl border border-gray-300
+        @apply mt-1 w-full p-3 pr-10  rounded-md border border-gray-300
      focus:border-gray-400 dark:focus:border-gray-600 focus:ring-1 focus:ring-gray-400
-     dark:focus:ring-gray-600 focus:outline-none px-3 py-3 bg-gray-100
-     dark:border-(--borda) dark:text-gray-400 dark:bg-(--dark-secondary)
-     dark:placeholder-gray-400;
+     dark:focus:ring-gray-600 focus:outline-none px-3 py-3 bg-(--light-primary)
+     dark:text-gray-400 dark:placeholder-gray-400  dark:bg-gray-800 text-gray-500
+     dark:border-gray-600;
     }
 
     .form-select-sm {
@@ -377,8 +377,11 @@
     }
 
     .btn-default-md {
-        @apply bg-(--default) text-white text-sm px-2 py-2 rounded hover:bg-(--default-secondary)
-     cursor-pointer shadow-md;
+        @apply bg-(--default) rounded hover:bg-(--default-secondary)
+     cursor-pointer shadow-md  inline-flex items-center px-4 py-2  border border-transparent
+      font-semibold text-xs text-white uppercase tracking-widest  focus:bg-(--default-secondary)
+      active:bg-(--default) focus:outline-none focus:ring-2 focus:ring-(--default) focus:ring-offset-2 transition
+       ease-in-out duration-150;
     }
 
     .btn-light {

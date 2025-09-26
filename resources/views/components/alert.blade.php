@@ -36,21 +36,18 @@
 
 @if ($message)
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            if (performance && performance.navigation.type === 2) {
-                // Se for navegação "back/forward", não mostra
-                return;
-            }
-
-            Swal.fire({
-                title: @json(ucfirst($type)),
-                text: @json($message),
-                icon: @json($icon),
-                confirmButtonText: "OK",
-                confirmButtonColor: "#32a2b9",
-                background: document.documentElement.classList.contains("dark") ? "#1f2937" : "#fff",
-                color: document.documentElement.classList.contains("dark") ? "#f9fafb" : "#111827",
-            });
-        });
+        ['DOMContentLoaded', 'pageshow'].forEach(ev =>
+            window.addEventListener(ev, function() {
+                Swal.fire({
+                    title: @json(ucfirst($type)),
+                    text: @json($message),
+                    icon: @json($icon),
+                    confirmButtonText: "OK",
+                    confirmButtonColor: "#32a2b9",
+                    background: document.documentElement.classList.contains("dark") ? "#1f2937" : "#fff",
+                    color: document.documentElement.classList.contains("dark") ? "#f9fafb" : "#111827",
+                });
+            })
+        );
     </script>
 @endif
