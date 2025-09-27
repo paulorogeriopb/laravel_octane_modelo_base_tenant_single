@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Rules\Tenant\TenantUnique;
+
 use Illuminate\Foundation\Http\FormRequest;
 
 class CursoRequest extends FormRequest
@@ -23,8 +25,16 @@ class CursoRequest extends FormRequest
      */
     public function rules(): array
     {
+        // pega o ID da rota (ex: cursos/{id}/edit)
+        $curso = $this->route('curso'); // já é Model
+        $cursoId = $curso?->id;
+
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'max:155',
+                new TenantUnique('courses', $cursoId),
+            ],
         ];
     }
 

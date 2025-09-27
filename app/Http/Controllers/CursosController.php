@@ -56,10 +56,9 @@ class CursosController extends Controller
     }
 
     // Atualizar curso existente
-    public function update(CursoRequest $cursoRequest, int $id)
+    public function update(CursoRequest $cursoRequest, Curso $curso)
     {
         $data = $cursoRequest->validated();
-        $curso = Curso::findOrFail($id);
         $curso->update($data);
 
         return redirect()->route($this->route.'.index')
