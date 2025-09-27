@@ -16,6 +16,7 @@ return new class() extends Migration {
             $table->id();
             $table->unsignedBigInteger('tenant_id');
             $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('updated_by')->nullable();
             $table->string('name');
             $table->timestamps();
 

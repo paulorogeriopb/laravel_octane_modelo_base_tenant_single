@@ -8,7 +8,7 @@
 
     {{-- Desktop --}}
     <div class="hidden gap-2 lg:flex">
-        @can($baseRoute . '-update')
+        @can($baseRoute . '-edit')
             <x-edit-button :route="$baseRoute . '.edit'" :id="$id" />
         @endcan
 

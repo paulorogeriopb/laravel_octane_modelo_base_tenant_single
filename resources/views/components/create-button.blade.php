@@ -2,7 +2,7 @@
     'baseRoute', // ex: 'cursos', 'usuarios'
 ])
 
-@can($baseRoute . '.create')
+@can($baseRoute . '-create')
     <a href="{{ route($baseRoute . '.create') }}" class="flex items-center space-x-1 btn-default align-icon-btn">
         <!-- Ícone plus-circle (Heroicons) -->
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"

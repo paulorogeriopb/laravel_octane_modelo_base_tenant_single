@@ -16,9 +16,17 @@ class TenantObserver
             $model->setAttribute('tenant_id', $tenant);
         }
 
-        // Define user_id automaticamente
+        // Define user_id (criador)
         if (Auth::check()) {
             $model->setAttribute('user_id', Auth::id());
+        }
+    }
+
+    public function updating(Model $model): void
+    {
+        // Define quem atualizou por último
+        if (Auth::check()) {
+            $model->setAttribute('updated_by', Auth::id());
         }
     }
 }
