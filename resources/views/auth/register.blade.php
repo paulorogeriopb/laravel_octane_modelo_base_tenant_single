@@ -11,9 +11,19 @@
 
             <!-- Name -->
             <div class="form-group">
+                <label for="tenant" class="form-label">{{ __('Enterprise') }}</label>
+                <input id="tenant" type="text" name="tenant" value="{{ old('tenant') }}" required autofocus
+                    autocomplete="tenant" class="form-input" />
+                @error('tenant')
+                    <div class="mt-2 text-sm text-red-600">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <!-- Name -->
+            <div class="mt-4 form-group">
                 <label for="name" class="form-label">{{ __('Name') }}</label>
-                <input id="name" type="text" name="name" value="{{ old('name') }}" required autofocus
-                    autocomplete="name" class="form-input" />
+                <input id="name" type="text" name="name" value="{{ old('name') }}" required autocomplete="name"
+                    class="form-input" />
                 @error('name')
                     <div class="mt-2 text-sm text-red-600">{{ $message }}</div>
                 @enderror

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
@@ -16,7 +17,10 @@ class UserSeeder extends Seeder
         // Pega o primeiro tenant já criado
         $tenant = Tenant::first();
         if (!$tenant) {
-            $tenant = Tenant::create(['name' => 'Default Tenant']);
+            $tenant = Tenant::create([
+                'name' => 'Default Tenant',
+                'uuid' => Str::uuid(),
+            ]);
         }
 
         $superAdmin = User::firstOrCreate(

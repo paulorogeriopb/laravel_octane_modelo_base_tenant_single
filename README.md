@@ -9,6 +9,7 @@ Este projeto é uma base moderna e robusta para aplicações Laravel, preparada 
 -   Laravel Breeze com confirmação de e-mail
 -   Laravel Auditing: rastreamento automático de alterações em modelos
 -   Apenas uma sessão ativa por conta de usuário é permitida simultaneamente.
+-   Uso do UUID.
 
 ### 🎨 Front-end Moderno com Vite + Tailwind CSS
 
@@ -290,6 +291,7 @@ php artisan pail -v
 ## 🔗 Referências
 
 -   [Laravel](https://laravel.com/docs/12.x/installation)
+-   [Laravel UUID](https://github.com/webpatser/laravel-uuid)
 -   [Laravel Auditing](https://laravel-auditing.com)
 -   [Laravel Breeze](https://github.com/laravel/breeze)
 -   [Laravel Pint](https://laravel.com/docs/12.x/pint)

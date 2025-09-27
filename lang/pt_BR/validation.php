@@ -231,6 +231,7 @@ return [
         'text'      => 'texto',
         'time'      => 'hora',
         'title'     => 'título',
+        'enterprise'           => 'Empresa',
         'username'  => 'usuário',
         'year'      => 'ano',
         'description' => 'descrição',

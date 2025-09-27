@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Audit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AuditController extends Controller
 {
@@ -20,12 +22,10 @@ class AuditController extends Controller
                 $q->where('event', 'like', "%{$search}%")
                   ->orWhere('user_type', 'like', "%{$search}%")
                   ->orWhere('auditable_type', 'like', "%{$search}%");
-            });
-
-            // 🔍 Busca pelo nome do usuário relacionado
-            $query->orWhereHasMorph(
+            })
+            ->orWhereHasMorph(
                 'user',
-                ['App\Models\User'], // ou outras classes possíveis (ex: Admin, etc.)
+                ['App\Models\User'],
                 function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%");
                 }
@@ -41,6 +41,11 @@ class AuditController extends Controller
         }
 
         $audits = $query->orderBy('created_at', 'desc')->paginate(20);
+
+        Log::info('Visualização de auditorias.', [
+            'user_id' => Auth::id(),
+            'filters' => $request->only(['event', 'date_from', 'date_to']),
+        ]);
 
         return view('audits.index', compact('audits'));
     }

@@ -234,6 +234,7 @@ return [
     'text'                 => 'text',
     'time'                 => 'time',
     'title'                => 'title',
+    'enterprise'           => 'Enterprise',
     'username'             => 'username',
     'year'                 => 'year',
     'description'          => 'description',

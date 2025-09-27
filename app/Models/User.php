@@ -31,6 +31,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'last_session_id',
         'user_status_id',
+        'tenant_id',
     ];
 
     /**
@@ -69,6 +70,12 @@ class User extends Authenticatable implements MustVerifyEmail
     public function tenant()
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+
+    public function cursos()
+    {
+        return $this->hasMany(Curso::class);
     }
 
 

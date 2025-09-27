@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers\Auth;
 
+use Illuminate\Support\Str;
+
+
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Tenant;
 use App\Models\VerificationCode;
 use App\Mail\EmailVerificationCodeMail;
 use Illuminate\Http\Request;
@@ -29,13 +33,19 @@ class RegisteredUserController extends Controller
     {
         // Validação do formulário
         $request->validate([
+            'tenant' => 'required|string|min:3|max:100|unique:tenants,name',
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        // Cria o usuário
-        $user = User::create([
+        // Cria o tenant
+        $tenant = Tenant::create([
+            'name' => $request->tenant
+        ]);
+
+        // Cria o usuário associado ao tenant
+        $user = $tenant->users()->create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),

@@ -1,36 +1,54 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
-use Illuminate\View\ViewException;
 use Throwable;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class Handler extends ExceptionHandler
 {
     protected $dontReport = [];
 
-    public function report(Throwable $throwable): void
+    public function report(Throwable $exception): void
     {
-        parent::report($throwable);
+        $this->logError($exception);
+        parent::report($exception);
     }
 
-    public function render($request, Throwable $throwable)
+    /**
+     * Log global de erros.
+     *
+     * @param \Throwable $exception
+     * @param \Illuminate\Http\Request|null $request
+     */
+    private function logError(Throwable $exception, ?Request $request = null): void
     {
-        // Se for erro de view (ex: erro de Blade)
-        if ($throwable instanceof ViewException) {
-            $message = $throwable->getMessage();
+        $user = Auth::user();
 
-            // Logar apenas a mensagem do erro sem o stacktrace
-            Log::channel('view')->error($message);
+        $context = [
+            'user_id'     => $user?->id,
+            'user_email'  => $user?->email,
+            'ip'          => $request?->ip() ?? request()->ip(),
+            'user_agent'  => $request?->userAgent() ?? request()->userAgent(),
+            'url'         => $request?->fullUrl() ?? request()->fullUrl(),
+            'route'       => $request?->route()?->getName() ?? request()->route()?->getName(),
+            'exception'   => $exception,
+        ];
 
-            // Opcional: mostrar uma página de erro genérica ou personalizada
-            return response()->view('errors.view', ['message' => $message], 500);
+        Log::error($exception->getMessage(), $context);
+    }
+
+    public function render($request, Throwable $exception)
+    {
+        // Se APP_DEBUG=true, exibe detalhes do erro
+        if (config('app.debug')) {
+            return parent::render($request, $exception);
         }
 
-        return parent::render($request, $throwable);
+        // Caso contrário, mostra uma página genérica
+        return response()->view('errors.500', ['message' => 'Ocorreu um erro no servidor.'], 500);
     }
 }
