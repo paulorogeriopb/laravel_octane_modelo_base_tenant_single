@@ -18,6 +18,7 @@ return new class() extends Migration {
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('updated_by')->nullable();
             $table->string('name');
+            $table->string('image')->nullable();
             $table->timestamps();
 
 

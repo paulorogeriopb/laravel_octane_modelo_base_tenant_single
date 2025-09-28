@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Permissões e roles do Spatie
         $middleware->alias([
+            'tenant' => \App\Http\Middleware\Tenant\TenantFilesystems::class,
             'verified' => \App\Http\Middleware\EmailIsVerified::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,

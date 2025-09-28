@@ -21,6 +21,7 @@ class Curso extends Model implements Auditable
         'user_id',     // quem criou
         'tenant_id',   // setado pelo observer
         'updated_by',  // quem atualizou por último
+        'image',
     ];
 
 
