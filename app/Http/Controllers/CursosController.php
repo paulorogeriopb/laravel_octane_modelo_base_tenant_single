@@ -11,33 +11,30 @@ use App\Tenant\ManagerTenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
-use Illuminate\Support\Facades\Auth;
-
 class CursosController extends Controller
 {
-    protected $model = Curso::class;
-    protected $view = 'cursos';
-    protected $route = 'cursos';
+    protected string $model = Curso::class;
+    protected string $view = 'cursos';
+    protected string $route = 'cursos';
 
     // Lista cursos paginados
     public function index(Request $request)
     {
-        $data = Curso::when(
+        $data = ($this->model)::when(
                 $request->filled('search'),
-                fn($query) => $query->where('name', 'like', '%'.$request->search.'%')
+                fn($query) => $query->where('name', 'like', '%' . $request->search . '%')
             )
-            //->where('user_id', Auth::id()) // filtra apenas do usuário logado
             ->orderBy('id', 'DESC')
             ->paginate(15)
             ->withQueryString();
 
-        return view($this->view.'.index', ['data' => $data]);
+        return view("{$this->view}.index", compact('data'));
     }
 
     // Formulário para criar curso
     public function create()
     {
-        return view($this->view.'.create');
+        return view("{$this->view}.create");
     }
 
     // Armazenar novo curso
@@ -45,43 +42,23 @@ class CursosController extends Controller
     {
         $data = $cursoRequest->validated();
 
-        if ($cursoRequest->hasFile('image') && $cursoRequest->file('image')->isValid()) {
-
-            $tenant = app(ManagerTenant::class)->getTenant();
-            $tenantFolder = $tenant->uuid;
-
-            // Estrutura por ano/mês/dia
-            $datePath = now()->format('Y/m/d');
-            $fullPath = "{$tenantFolder}/{$datePath}";
-
-            // Cria a pasta se não existir
-            if (!Storage::disk('tenant')->exists($fullPath)) {
-                Storage::disk('tenant')->makeDirectory($fullPath, 0755, true);
-            }
-
-            $extension = $cursoRequest->image->extension();
-            $fileName = Str::kebab($cursoRequest->name) . '-' . time() . '.' . $extension;
-
-            // Salva o arquivo na pasta do tenant com data
-            $cursoRequest->image->storeAs($fullPath, $fileName, 'tenant');
-
-            // Salva caminho relativo no DB
-            $data['image'] = "{$fullPath}/{$fileName}";
+        if ($cursoRequest->hasFile('image')) {
+            $data['image'] = $this->handleImageUpload($cursoRequest->file('image'), $cursoRequest->name);
         }
 
-        Curso::create($data);
+        ($this->model)::create($data);
 
-        return redirect()->route($this->route.'.index')
-                        ->with('success', __('mensagens.created'));
+        return redirect()
+            ->route("{$this->route}.index")
+            ->with('success', __('mensagens.created'));
     }
-
 
     // Formulário para editar curso
     public function edit(int $id)
     {
-        $data = Curso::findOrFail($id);
+        $data = ($this->model)::findOrFail($id);
 
-        return view($this->view.'.edit', ['data' => $data]);
+        return view("{$this->view}.edit", compact('data'));
     }
 
     // Atualizar curso existente
@@ -89,52 +66,58 @@ class CursosController extends Controller
     {
         $data = $cursoRequest->validated();
 
-        if ($cursoRequest->hasFile('image') && $cursoRequest->file('image')->isValid()) {
-
-            $tenant = app(ManagerTenant::class)->getTenant();
-            $tenantFolder = $tenant->uuid;
-
-            // Cria pasta do tenant
-            if (!Storage::disk('tenant')->exists($tenantFolder)) {
-                Storage::disk('tenant')->makeDirectory($tenantFolder);
-            }
-
-            // Cria subpastas por ano/mês/dia igual WordPress
-            $subFolder = date('Y/m/d');
-            $fullPath = "{$tenantFolder}/{$subFolder}";
-            if (!Storage::disk('tenant')->exists($fullPath)) {
-                Storage::disk('tenant')->makeDirectory($fullPath);
-            }
-
-            // Nome do arquivo
-            $extension = $cursoRequest->image->extension();
-            $fileName = Str::kebab($cursoRequest->name) . '-' . time() . '.' . $extension;
-
-            // Salva dentro da pasta do tenant com subpastas de data
-            $cursoRequest->image->storeAs($fullPath, $fileName, 'tenant');
-
-            // Deleta imagem antiga (opcional)
+        if ($cursoRequest->hasFile('image')) {
+            // Deleta imagem antiga, se existir
             if ($curso->image && Storage::disk('tenant')->exists($curso->image)) {
                 Storage::disk('tenant')->delete($curso->image);
             }
 
-            // Atualiza o path no banco
-            $data['image'] = "{$fullPath}/{$fileName}";
+            $data['image'] = $this->handleImageUpload($cursoRequest->file('image'), $cursoRequest->name);
         }
 
         $curso->update($data);
 
-        return redirect()->route($this->route.'.index')
-                        ->with('success', __('mensagens.updated'));
+        return redirect()
+            ->route("{$this->route}.index")
+            ->with('success', __('mensagens.updated'));
     }
 
     // Deletar curso
     public function destroy(int $id)
     {
-        $curso = Curso::findOrFail($id);
+        $curso = ($this->model)::findOrFail($id);
+
+        // Deleta imagem associada
+        if ($curso->image && Storage::disk('tenant')->exists($curso->image)) {
+            Storage::disk('tenant')->delete($curso->image);
+        }
+
         $curso->delete();
 
-        return redirect()->route($this->route.'.index')
-                         ->with('success', __('mensagens.deleted'));
+        return redirect()
+            ->route("{$this->route}.index")
+            ->with('success', __('mensagens.deleted'));
+    }
+
+    /**
+     * Upload de imagem centralizado.
+     */
+    protected function handleImageUpload($file, string $name): string
+    {
+        $tenant = app(ManagerTenant::class)->getTenant();
+        $tenantFolder = $tenant->uuid;
+        $datePath = now()->format('Y/m/d');
+        $fullPath = "{$tenantFolder}/{$datePath}";
+
+        if (!Storage::disk('tenant')->exists($fullPath)) {
+            Storage::disk('tenant')->makeDirectory($fullPath, 0755, true);
+        }
+
+        $extension = $file->extension();
+        $fileName = Str::kebab($name) . '-' . time() . '.' . $extension;
+
+        $file->storeAs($fullPath, $fileName, 'tenant');
+
+        return "{$fullPath}/{$fileName}";
     }
 }

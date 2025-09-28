@@ -49,7 +49,7 @@ return [
 
        'tenant' => [
             'driver' => 'local',
-            'root' => storage_path('app/public/tenants'), // só até tenants
+            'root' => storage_path('app/public/uploads'), // só até tenants
             'url' => env('APP_URL').'/storage', // URL pública via storage link
             'visibility' => 'public',
         ],

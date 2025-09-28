@@ -27,6 +27,7 @@
                     <thead>
                         <tr class="table-row-header">
                             <th class="table-header">ID</th>
+                            <th class="table-header">Arquivo</th>
                             <th class="table-header">Nome</th>
                             <th class="table-header center">Ações</th>
                         </tr>
@@ -35,6 +36,12 @@
                         @foreach ($data as $d)
                             <tr class="table-row-body">
                                 <td class="table-body">{{ $d->id }}</td>
+                                <td
+                                    class="inline-block max-w-sm p-1 border border-gray-300 rounded-full dark:border-gray-600 table-body">
+                                    <img src="{{ asset('storage/uploads/' . $d->image ?? 'images/defaults/photo.png') }}"
+                                        alt="{{ $d->name }}"
+                                        class="object-contain w-10 h-10 bg-gray-100 rounded-full" />
+                                </td>
                                 <td class="table-body">{{ $d->name }}</td>
                                 <td class="table-actions">
                                     <div class="table-actions-align">
