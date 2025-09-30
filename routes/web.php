@@ -18,6 +18,7 @@ use App\Http\Controllers\Auth\EmailVerificationCodeController;
 use App\Http\Controllers\Auth\ForgotPasswordCodeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Subscription\SubscriptionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -204,6 +205,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{curso}', [CursosController::class, 'update'])->name('cursos.update')->middleware('permission:cursos-edit');
         Route::delete('/{curso}', [CursosController::class, 'destroy'])->name('cursos.destroy')->middleware('permission:cursos-destroy');
     });
+
+
+
+
+
+
+
+
+
+
+// Página de checkout
+    Route::get('/subscriptions/checkout', [SubscriptionController::class, 'checkout'])
+        ->name('subscriptions.checkout');
+
+    // Criar assinatura (store)
+    Route::post('/subscriptions', [SubscriptionController::class, 'store'])
+        ->name('subscriptions.store');
+
+    // Página de início após assinatura
+    Route::get('/subscriptions/start', [SubscriptionController::class, 'start'])
+        ->name('subscriptions.start');
+
+
+
+
 });
 
 // Rotas do auth padrão

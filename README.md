@@ -11,6 +11,10 @@ Este projeto é uma base moderna e robusta para aplicações Laravel, preparada 
 -   Apenas uma sessão ativa por conta de usuário é permitida simultaneamente.
 -   Uso do UUID.
 
+### Modulo de Pagamento
+
+-   Laravel cashier para configuração de planos e utilização do Stripe.com
+
 ### 🎨 Front-end Moderno com Vite + Tailwind CSS
 
 A base front-end utiliza:
@@ -296,6 +300,8 @@ php artisan pail -v
 -   [Laravel Breeze](https://github.com/laravel/breeze)
 -   [Laravel Pint](https://laravel.com/docs/12.x/pint)
 -   [Laravel Pail](https://laravel.com/docs/12.x/logging)
+-   [Laravel Cashier](https://laravel.com/docs/12.x/billing)
+-   [Stripe](stripe.com)
 -   [docker](https://www.docker.com/)
 -   [Commitizen](https://github.com/commitizen/cz-cli)
 -   [Conventional Commits](https://www.conventionalcommits.org/)
