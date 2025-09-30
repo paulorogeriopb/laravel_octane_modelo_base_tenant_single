@@ -1,14 +1,6 @@
 @extends('layouts.app')
 
 @section('content')
-    <!-- Título e Trilha de Navegação -->
-    <div class="content-wrapper">
-        <div class="content-header">
-            <h2 class="content-title">{{ pageTitle() }}</h2>
-            {!! renderBreadcrumb() !!}
-        </div>
-    </div>
-
     <div class="content-box">
         <!-- inicio  Content box header -->
         <div class="content-box-header">

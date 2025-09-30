@@ -128,7 +128,7 @@
     }
 
     .dropdownContent-one {
-        @apply bg-(--light-primary) rounded-md shadow-lg dark:bg-(--dark-primary) mt-28 right-2  w-48;
+        @apply bg-(--light-primary) rounded-md shadow-lg dark:bg-(--dark-primary) mt-40 right-2  w-48;
     }
 
     .dropdown-item {

@@ -56,6 +56,10 @@
 
         <main class="flex-1 p-4">
 
+            <x-title-page />
+
+            <x-trial-expiration-warning />
+
             @can('dashboard')
                 @yield('content')
                 @stack('scripts')

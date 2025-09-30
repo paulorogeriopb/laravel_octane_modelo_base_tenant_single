@@ -1,13 +1,6 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="content-wrapper">
-        <div class="content-header">
-            <h2 class="content-title">{{ __('Profile') }}</h2>
-            {!! renderBreadcrumb() !!}
-        </div>
-    </div>
-
     <div class="content-box">
         <div class="max-w-xl">
             @include('profile.partials.update-profile-information-form')

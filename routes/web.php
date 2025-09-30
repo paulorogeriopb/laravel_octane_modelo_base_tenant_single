@@ -229,8 +229,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('subscriptions.account');
 
     // Faturas Download
-    Route::get('/subscriptions/invoice/{invoiceId}', [SubscriptionController::class, 'invoiceDonwload'])
-    ->name('subscriptions.invoice.download');
+    Route::get('/subscriptions/invoice/{invoiceId}/download',
+    [SubscriptionController::class, 'invoiceDownload']
+)->name('subscriptions.invoice.download');
 
     // Cancelar assinatura
     Route::get('/subscriptions/cancel', [SubscriptionController::class, 'cancel'])
@@ -239,6 +240,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Resumir assinatura
     Route::get('/subscriptions/resume', [SubscriptionController::class, 'resume'])
      ->name('subscriptions.resume');
+
+     // Página para mostrar os planos disponíveis
+Route::get('/subscriptions/change-plan', [SubscriptionController::class, 'showPlans'])
+    ->name('subscriptions.change-plan');
+
+// Rota para atualizar o plano selecionado
+Route::post('/subscriptions/update-plan', [SubscriptionController::class, 'updatePlan'])
+    ->name('subscriptions.update-plan');
 
 
     // Página de checkout

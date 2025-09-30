@@ -1,12 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="content-wrapper">
-        <div class="content-header">
-            <h2 class="content-title">{{ pageTitle() }}</h2>
-            {!! renderBreadcrumb() !!}
-        </div>
-    </div>
+
 
     <div class="content-box">
         <div class="content-box-header">
@@ -73,8 +68,7 @@
                                                 class="form-input-md {{ $d->userStatus->color_class }}">
 
                                                 @foreach ($statuses as $status)
-                                                    <option value="{{ $status->id }}"
-                                                        data-class="{{ $status->color_class }}"
+                                                    <option value="{{ $status->id }}" data-class="{{ $status->color_class }}"
                                                         class="{{ $status->color_class }}"
                                                         {{ $d->user_status_id == $status->id ? 'selected' : '' }}>
                                                         {{ $status->name }}
