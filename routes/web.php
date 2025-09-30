@@ -103,7 +103,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Auditoria
-    Route::get('/audits', [AuditController::class, 'index'])->name('audits.index');
+    Route::get('/audits', [AuditController::class, 'index'])->name('audits.index')->middleware(['subscribed']);
 
     // Debug de idioma
     Route::get('/debug-locale', fn() => [
@@ -120,7 +120,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Traduções
     |--------------------------------------------------------------------------
     */
-    Route::prefix('translations')->group(function () {
+    Route::prefix('translations')
+    ->middleware(['subscribed'])
+    ->group(function () {
         Route::get('/', [TranslationController::class, 'index'])->name('translations.index')->middleware('permission:translation-index');
         Route::get('/create', [TranslationController::class, 'create'])->name('translations.create')->middleware('permission:translation-create');
         Route::post('/', [TranslationController::class, 'store'])->name('translations.store')->middleware('permission:translation-create');
@@ -134,7 +136,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Usuários e Senhas
     |--------------------------------------------------------------------------
     */
-    Route::prefix('users')->group(function () {
+    Route::prefix('users')
+    ->middleware(['subscribed'])
+    ->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('users.index')->middleware('permission:user-index');
         Route::get('/create', [UserController::class, 'create'])->name('users.create')->middleware('permission:user-create');
         Route::post('/', [UserController::class, 'store'])->name('users.store')->middleware('permission:user-create');
@@ -153,7 +157,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Status de Usuários
     |--------------------------------------------------------------------------
     */
-    Route::prefix('user-statuses')->group(function () {
+    Route::prefix('user-statuses')
+    ->middleware(['subscribed'])
+    ->group(function () {
         Route::get('/', [UserStatusController::class, 'index'])->name('user_statuses.index')->middleware('permission:user-status-index');
         Route::get('/create', [UserStatusController::class, 'create'])->name('user_statuses.create')->middleware('permission:user-status-create');
         Route::post('/', [UserStatusController::class, 'store'])->name('user_statuses.store')->middleware('permission:user-status-create');
@@ -168,7 +174,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Papéis e Permissões
     |--------------------------------------------------------------------------
     */
-    Route::prefix('roles')->group(function () {
+    Route::prefix('roles')
+    ->middleware(['subscribed'])
+    ->group(function () {
         Route::get('/', [RoleController::class, 'index'])->name('roles.index')->middleware('permission:role-index');
         Route::get('/create', [RoleController::class, 'create'])->name('roles.create')->middleware('permission:role-create');
         Route::post('/', [RoleController::class, 'store'])->name('roles.store')->middleware('permission:role-create');
@@ -182,7 +190,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/permissions/{role}/toggle-user/{user}', [RolePermissionController::class, 'toggleUser'])->name('role-permissions.toggleUser')->middleware('permission:permission-role-update');
     });
 
-    Route::prefix('permissions')->group(function () {
+    Route::prefix('permissions')
+    ->middleware(['subscribed'])
+    ->group(function () {
         Route::get('/', [PermissionController::class, 'index'])->name('permissions.index')->middleware('permission:permission-index');
         Route::get('/create', [PermissionController::class, 'create'])->name('permissions.create')->middleware('permission:permission-create');
         Route::post('/', [PermissionController::class, 'store'])->name('permissions.store')->middleware('permission:permission-create');
@@ -197,7 +207,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     | Cursos
     |--------------------------------------------------------------------------
     */
-    Route::prefix('cursos')->group(function () {
+    Route::prefix('cursos')
+    ->middleware(['subscribed'])
+    ->group(function () {
         Route::get('/', [CursosController::class, 'index'])->name('cursos.index')->middleware('permission:cursos-index');
         Route::get('/create', [CursosController::class, 'create'])->name('cursos.create')->middleware('permission:cursos-create');
         Route::post('/', [CursosController::class, 'store'])->name('cursos.store')->middleware('permission:cursos-create');
@@ -225,7 +237,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Página de início após assinatura
     Route::get('/subscriptions/start', [SubscriptionController::class, 'start'])
-        ->name('subscriptions.start');
+    ->middleware('subscribed')
+    ->name('subscriptions.start');
 
 
 

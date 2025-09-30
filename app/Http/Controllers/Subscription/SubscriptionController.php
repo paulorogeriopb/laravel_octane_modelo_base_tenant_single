@@ -40,12 +40,7 @@ class SubscriptionController extends Controller
 
     public function start(Request $request)
     {
-        $subscription = auth()->user()->subscription('default');
 
-    // Se não tem assinatura ou já expirou -> manda pro checkout
-    if (! $subscription || ! $subscription->valid()) {
-        return redirect()->route('subscriptions.checkout');
-    }
 
     return view('subscriptions.start');
     }
