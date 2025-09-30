@@ -31,11 +31,16 @@ class SubscriptionController extends Controller
 
     public function store(Request $request)
     {
-        $request->user()
-            ->newSubscription('default', 'price_1SCDhjE23YTKTG0iz2bn5U5x')
-            ->create($request->token);
+        try {
+            $request->user()
+                ->newSubscription('default', 'price_1SCDhjE23YTKTG0iz2bn5U5x')
+                ->create($request->token);
 
-        return redirect()->route('subscriptions.start');
+            return redirect()->route('subscriptions.start')
+                ->with('success', 'Pagamento realizado com sucesso!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Ocorreu um erro no pagamento: ' . $e->getMessage());
+        }
     }
 
     public function start(Request $request)

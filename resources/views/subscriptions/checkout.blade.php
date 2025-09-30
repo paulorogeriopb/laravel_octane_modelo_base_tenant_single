@@ -68,7 +68,6 @@
                 },
             };
 
-            // Elementos Stripe
             const cardNumber = elements.create('cardNumber', {
                 style,
                 showIcon: true
@@ -80,7 +79,6 @@
                 style
             });
 
-            // Monta os elementos
             cardNumber.mount('#card-number');
             cardExpiry.mount('#card-expiry');
             cardCvc.mount('#card-cvc');
@@ -93,37 +91,45 @@
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
 
-                const {
-                    setupIntent,
-                    error
-                } = await stripe.confirmCardSetup(clientSecret, {
-                    payment_method: {
-                        card: cardNumber,
-                        billing_details: {
-                            name: cardHolderName.value,
-                            address: {
-                                postal_code: document.getElementById('postal-code').value
+                // Desabilita botão e altera texto
+                cardButton.disabled = true;
+                const originalText = cardButton.textContent;
+                cardButton.textContent = "{{ __('Processando pagamento, aguarde...') }}";
+
+                try {
+                    const {
+                        setupIntent,
+                        error
+                    } = await stripe.confirmCardSetup(clientSecret, {
+                        payment_method: {
+                            card: cardNumber,
+                            billing_details: {
+                                name: cardHolderName.value,
+                                address: {
+                                    postal_code: document.getElementById('postal-code').value
+                                }
                             }
                         }
-                    }
-                });
+                    });
 
-                if (error) {
-                    alert(error.message);
-                    console.error(error);
-                } else {
-                    console.log('SetupIntent success', setupIntent);
+                    if (error) throw error;
 
+                    // Cria input hidden com token
+                    const tokenInput = document.createElement('input');
+                    tokenInput.type = 'hidden';
+                    tokenInput.name = 'token';
+                    tokenInput.value = setupIntent.payment_method;
+                    form.appendChild(tokenInput);
+
+                    // Envia formulário
+                    form.submit();
+
+                } catch (err) {
+                    console.error(err);
+                    alert(err.message || "Ocorreu um erro no pagamento.");
+                    cardButton.disabled = false;
+                    cardButton.textContent = originalText;
                 }
-
-                let token = document.createElement('input');
-                token.setAttribute('type', 'hidden');
-                token.setAttribute('name', 'token');
-                token.setAttribute('value', setupIntent.payment_method);
-                form.appendChild(token);
-
-                form.submit();
-
             });
         });
     </script>
