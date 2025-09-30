@@ -60,6 +60,7 @@
             <!-- Dropdown -->
             <div id="dropdownContent" class="absolute z-50 hidden dropdownContent-one">
                 <a href="{{ route('profile.edit') }}" class="dropdown-item">Perfil</a>
+                <a href="{{ route('subscriptions.account') }}" class="dropdown-item">Minha Assinatura</a>
 
                 <a href="{{ route('logout') }}"
                     onclick="event.preventDefault(); document.getElementById('logout-form').submit();"

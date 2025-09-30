@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Subscription;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class SubscriptionController extends Controller
 {
@@ -43,10 +44,45 @@ class SubscriptionController extends Controller
         }
     }
 
-    public function start(Request $request)
+    public function start()
+    {
+        return view('subscriptions.start');
+    }
+
+
+
+    public function account()
     {
 
-
-    return view('subscriptions.start');
+        $invoices = auth()->user()->invoices();
+        return view('subscriptions.account', compact('invoices'));
     }
+
+
+    public function invoiceDonwload($invoiceId)
+    {
+        return Auth::user()
+                    ->downloadInvoice($invoiceId, [
+                        'vendor' => config('app.name'),
+                        'product' => 'Assinatura Mensal'
+
+                    ]);
+    }
+
+
+
+    public function cancel()
+    {
+        $invoices = auth()->user()->subscription('default')->cancel();
+        return redirect()->route('subscriptions.account');
+    }
+
+
+     public function resume()
+    {
+        $invoices = auth()->user()->subscription('default')->resume();
+        return redirect()->route('subscriptions.account');
+    }
+
+
 }

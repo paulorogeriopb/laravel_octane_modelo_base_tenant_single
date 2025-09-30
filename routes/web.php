@@ -224,10 +224,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
 
+    // Faturas
+    Route::get('/subscriptions/account', [SubscriptionController::class, 'account'])
+        ->name('subscriptions.account');
+
+    // Faturas Download
+    Route::get('/subscriptions/invoice/{invoiceId}', [SubscriptionController::class, 'invoiceDonwload'])
+    ->name('subscriptions.invoice.download');
+
+    // Cancelar assinatura
+    Route::get('/subscriptions/cancel', [SubscriptionController::class, 'cancel'])
+     ->name('subscriptions.cancel');
+
+    // Resumir assinatura
+    Route::get('/subscriptions/resume', [SubscriptionController::class, 'resume'])
+     ->name('subscriptions.resume');
 
 
-
-// Página de checkout
+    // Página de checkout
     Route::get('/subscriptions/checkout', [SubscriptionController::class, 'checkout'])
         ->name('subscriptions.checkout');
 
