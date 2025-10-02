@@ -1,12 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mx-auto space-y-6 ">
+    <div class="max-w-4xl p-6 mx-auto space-y-6">
 
-        {{-- Mensagens --}}
         <x-alert />
 
-        {{-- Assinatura --}}
         <div class="p-6 bg-white shadow rounded-xl">
             <h2 class="mb-4 text-xl font-bold">Minha Assinatura</h2>
 
@@ -15,10 +13,10 @@
                     <span class="px-3 py-1 rounded-full text-sm font-medium {{ $statusClass }}">
                         {{ $statusLabel }}
                     </span>
+
                     @if ($currentPlan)
                         <span class="text-lg font-semibold">
-                            {{ $currentPlan['name'] }}
-                            <span class="text-gray-500">/ {{ ucfirst($currentPlan['interval']) }}</span>
+                            {{ $currentPlan['name'] }} <span class="text-gray-500">/ {{ $currentPlan['interval'] }}</span>
                         </span>
                     @endif
                 </div>
@@ -26,36 +24,22 @@
                 <div class="grid grid-cols-2 gap-6">
                     <div>
                         <p class="text-sm text-gray-500">Valor do Plano</p>
-                        <p class="text-lg font-medium">R$ {{ $currentPlan['price'] ?? '-' }}</p>
+                        <p class="text-lg font-medium">
+                            R$ {{ $currentPlan['price'] ?? '-' }}
+                        </p>
                     </div>
 
-                    {{-- Aviso de período de graça --}}
-                    @if ($subscription && $subscription->onGracePeriod())
-                        @php
-                            $graceEnd = $subscription->ends_at;
-                            $diff = $graceEnd->diff(now());
-                            $graceDays = $diff->d;
-                            $graceHours = str_pad($diff->h, 2, '0', STR_PAD_LEFT);
-                            $graceMinutes = str_pad($diff->i, 2, '0', STR_PAD_LEFT);
-                        @endphp
-                        <div class="p-4 mt-4 mb-4 shadow alert-danger">
-                            <p>
-                                Sua assinatura foi cancelada e está em <strong>período de Teste</strong>.
-                            </p>
-                            <p>
-                                Restam <strong>{{ $graceDays }} dias e {{ $graceHours }}:{{ $graceMinutes }}
-                                    horas</strong> de acesso, até
-                                <strong>{{ $graceEnd->format('d/m/Y H:i') }}</strong>.
-                            </p>
-                        </div>
-
-                        {{-- Aviso de trial apenas se não estiver em período de graça --}}
-                    @elseif ($isTrial && $trialDaysLeft > 0)
-                        <div class="p-4 mt-4 mb-4 shadow alert-warning">
-                            <p>
-                                Seu Trial termina em <strong>{{ $trialDaysLeft }} dias e
-                                    {{ $trialHours }}:{{ $trialMinutes }} horas</strong>
-                                (até {{ $subscription->trial_ends_at->format('d/m/Y H:i') }}).
+                    @if (!empty($currentPlan['trial_days']) && $subscription->onTrial())
+                        <div>
+                            <p class="text-sm text-gray-500">Tempo Restante no Trial</p>
+                            <p class="text-lg font-medium">
+                                {{ $remainingPayload['days'] }}
+                                {{ \Illuminate\Support\Str::plural('dia', $remainingPayload['days']) }}
+                                @if (!empty($remainingPayload['hours']) || !empty($remainingPayload['minutes']))
+                                    e
+                                    {{ str_pad($remainingPayload['hours'], 2, '0', STR_PAD_LEFT) }}:{{ str_pad($remainingPayload['minutes'], 2, '0', STR_PAD_LEFT) }}
+                                    horas
+                                @endif
                             </p>
                         </div>
                     @endif
@@ -74,33 +58,38 @@
 
                     <div>
                         <p class="text-sm text-gray-500">Fim do Ciclo</p>
-                        <p class="text-lg font-medium">
-                            {{ $planEndDate ? $planEndDate->format('d/m/Y') : '-' }}
-                        </p>
+                        <p class="text-lg font-medium">{{ $planEndDate ? $planEndDate->format('d/m/Y') : '-' }}</p>
                     </div>
+
                 </div>
 
-                {{-- Botões --}}
                 <div class="flex gap-4 mt-6">
                     @if ($subscription->onGracePeriod())
-                        <a href="{{ route('subscriptions.resume') }}" class="px-4 py-2 font-medium btn-success">
-                            {{ __('Reativar Assinatura') }}
-                        </a>
+                        <form action="{{ route('subscriptions.resume') }}" method="POST" class="inline">
+                            @csrf
+                            <button type="submit" class="px-4 py-2 font-medium btn-success">Reativar Assinatura</button>
+                        </form>
                     @else
-                        <a href="{{ route('subscriptions.cancel') }}" class="px-4 py-2 font-medium btn-danger ">
-                            {{ __('Cancelar Assinatura') }}
-                        </a>
+                        <form action="{{ route('subscriptions.cancel') }}" method="POST" class="inline form-cancel">
+                            @csrf
+                            <button type="submit" class="px-4 py-2 font-medium btn-danger">Cancelar Assinatura</button>
+                        </form>
                     @endif
-                    <a href="{{ route('subscriptions.change-plan') }}" class="px-4 py-2 btn btn-default">
-                        {{ __('Alterar Plano') }}
-                    </a>
+
+                    <a href="{{ route('subscriptions.change-plan') }}" class="px-4 py-2 btn btn-default">Alterar Plano</a>
                 </div>
+
+                {{-- Avisos: trial ou grace --}}
+                @if (!empty($remainingPayload['type']) && $remainingPayload['type'] === 'grace')
+                    <x-grace-period-warning :days="$remainingPayload['days']" :hours="$remainingPayload['hours']" :minutes="$remainingPayload['minutes']" :ends-at="$remainingPayload['ends_at']" />
+                @elseif (!empty($remainingPayload['type']) && $remainingPayload['type'] === 'trial')
+                    <x-trial-expiration-warning :days="$remainingPayload['days']" :hours="$remainingPayload['hours']" :minutes="$remainingPayload['minutes']" :ends-at="$remainingPayload['ends_at']" />
+                @endif
             @else
                 <p class="text-gray-600">Você ainda não possui nenhuma assinatura ativa.</p>
             @endif
         </div>
 
-        {{-- Histórico de faturas --}}
         <div class="p-6 bg-white shadow rounded-xl">
             <h2 class="mb-4 text-xl font-bold">Histórico de Faturas</h2>
 
@@ -120,15 +109,16 @@
                                 <td class="px-3 py-2">{{ $invoice->formatted_date }}</td>
                                 <td class="px-3 py-2">R$ {{ $invoice->formatted_total }}</td>
                                 <td class="px-3 py-2">
-                                    <span class="{{ $invoice->status_class }}">
-                                        {{ $invoice->status_label }}
-                                    </span>
+                                    <span class="{{ $invoice->status_class }}">{{ $invoice->status_label }}</span>
                                 </td>
                                 <td class="px-3 py-2 text-right">
-                                    <a href="{{ $invoice->hosted_invoice_url }}" target="_blank"
-                                        class="text-blue-600 hover:underline">
-                                        Ver Fatura
-                                    </a>
+                                    @if ($invoice->hosted_url)
+                                        <a href="{{ $invoice->hosted_url }}" target="_blank"
+                                            class="text-blue-600 hover:underline">Ver Fatura</a>
+                                    @else
+                                        <a href="{{ route('subscriptions.invoice.download', $invoice->id) }}"
+                                            class="text-blue-600 hover:underline">Download PDF</a>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -138,6 +128,5 @@
                 <p class="text-gray-600">Nenhuma fatura encontrada.</p>
             @endif
         </div>
-
     </div>
 @endsection

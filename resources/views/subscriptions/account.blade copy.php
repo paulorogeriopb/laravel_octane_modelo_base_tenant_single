@@ -1,21 +1,12 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-4xl p-6 mx-auto space-y-6">
+<div class="mx-auto space-y-6 ">
 
-  {{-- Mensagens de sucesso/erro --}}
-  @if (session('success'))
-  <div class="p-4 text-green-800 bg-green-100 rounded-lg">
-    {{ session('success') }}
-  </div>
-  @endif
-  @if (session('error'))
-  <div class="p-4 text-red-800 bg-red-100 rounded-lg">
-    {{ session('error') }}
-  </div>
-  @endif
+  {{-- Mensagens --}}
+  <x-alert />
 
-  {{-- Card de status --}}
+  {{-- Assinatura --}}
   <div class="p-6 bg-white shadow rounded-xl">
     <h2 class="mb-4 text-xl font-bold">Minha Assinatura</h2>
 
@@ -27,80 +18,82 @@
       @if ($currentPlan)
       <span class="text-lg font-semibold">
         {{ $currentPlan['name'] }}
-        <span class="text-gray-500">/ {{ ucfirst($currentPlan['interval']) }}</span>
       </span>
       @endif
     </div>
 
     <div class="grid grid-cols-2 gap-6">
-      {{-- Valor do plano --}}
       <div>
         <p class="text-sm text-gray-500">Valor do Plano</p>
-        <p class="text-lg font-medium">
-          {{ $currentPlan['price'] ?? '-' }}
+        <p class="text-lg font-medium">R$ {{ $currentPlan['price'] ?? '-' }}
+          <span class="text-gray-500">/ {{ ucfirst($currentPlan['interval']) }}</span>
         </p>
       </div>
 
-      {{-- Trial --}}
-      @if ($isTrial)
-      <div>
-        <p class="text-sm text-gray-500">Dias Restantes no Trial</p>
-        <p class="text-lg font-medium">
-          {{ $currentPlan['trial_days'] }} dias
+      {{-- Aviso de período de graça --}}
+      @if ($subscription && $subscription->onGracePeriod())
+      @php
+      $graceEnd = $subscription->ends_at;
+      $diff = $graceEnd->diff(now());
+      $graceDays = $diff->d;
+      $graceHours = str_pad($diff->h, 2, '0', STR_PAD_LEFT);
+      $graceMinutes = str_pad($diff->i, 2, '0', STR_PAD_LEFT);
+      @endphp
+      <div class="p-4 mt-4 mb-4 shadow alert-danger">
+        <p>
+          Sua assinatura foi cancelada e está em <strong>período de Teste</strong>.
+        </p>
+        <p>
+          Restam <strong>{{ $graceDays }} dias e {{ $graceHours }}:{{ $graceMinutes }}
+            horas</strong> de acesso, até
+          <strong>{{ $graceEnd->format('d/m/Y H:i') }}</strong>.
+        </p>
+      </div>
+
+      {{-- Aviso de trial apenas se não estiver em período de graça --}}
+      @elseif ($isTrial && $trialDaysLeft > 0)
+      <div class="p-4 mt-4 mb-4 shadow alert-warning">
+        <p>
+          Seu Trial termina em <strong>{{ $trialDaysLeft }} dias e
+            {{ $trialHours }}:{{ $trialMinutes }} horas</strong>
+          (até {{ $subscription->trial_ends_at->format('d/m/Y H:i') }}).
         </p>
       </div>
       @endif
 
-      {{-- Próximo Pagamento --}}
       <div>
         <p class="text-sm text-gray-500">Próxima Cobrança</p>
         <p class="text-lg font-medium">
-          @if ($nextPayment)
-          {{ $nextPayment->format('d/m/Y') }}
-          @else
-          -
-          @endif
+          {{ $nextPayment ? $nextPayment->format('d/m/Y') : '-' }}
         </p>
       </div>
 
-      {{-- Valor da Próxima Fatura --}}
       <div>
-        <p class="text-sm text-gray-500">Valor da Próxima Fatura</p>
-        <p class="text-lg font-medium">
-          {{ $nextAmount ?? '-' }}
-        </p>
+        <p class="text-sm text-gray-500">Valor da Fatura</p>
+        <p class="text-lg font-medium">{{ $nextAmount ?? '-' }}</p>
       </div>
 
-      {{-- Data de encerramento do ciclo --}}
       <div>
         <p class="text-sm text-gray-500">Fim do Ciclo</p>
         <p class="text-lg font-medium">
-          @if ($planEndDate)
-          {{ $planEndDate->format('d/m/Y') }}
-          @else
-          -
-          @endif
+          {{ $planEndDate ? $planEndDate->format('d/m/Y') : '-' }}
         </p>
       </div>
     </div>
 
-    {{-- Botões de ação --}}
-    <div class="flex flex-wrap gap-4 mt-6">
+    {{-- Botões --}}
+    <div class="flex gap-4 mt-6">
       @if ($subscription->onGracePeriod())
-      <a href="{{ route('subscriptions.resume') }}"
-        class="px-4 py-2 font-medium text-white transition bg-green-600 rounded hover:bg-green-700">
-        Reativar Assinatura
+      <a href="{{ route('subscriptions.resume') }}" class="px-4 py-2 font-medium btn-success">
+        {{ __('Reativar Assinatura') }}
       </a>
       @else
-      <a href="{{ route('subscriptions.cancel') }}"
-        class="px-4 py-2 font-medium text-white transition bg-red-600 rounded hover:bg-red-700">
-        Cancelar Assinatura
+      <a href="{{ route('subscriptions.cancel') }}" class="px-4 py-2 font-medium btn-danger ">
+        {{ __('Cancelar Assinatura') }}
       </a>
       @endif
-
-      <a href="{{ route('subscriptions.change-plan') }}"
-        class="px-4 py-2 font-medium text-gray-800 transition bg-gray-200 rounded hover:bg-gray-300">
-        Alterar Plano
+      <a href="{{ route('subscriptions.change-plan') }}" class="px-4 py-2 btn btn-default">
+        {{ __('Alterar Plano') }}
       </a>
     </div>
     @else
@@ -125,22 +118,12 @@
       <tbody>
         @foreach ($invoices as $invoice)
         <tr class="border-t">
+          <td class="px-3 py-2">{{ $invoice->formatted_date }}</td>
+          <td class="px-3 py-2">R$ {{ $invoice->formatted_total }}</td>
           <td class="px-3 py-2">
-            {{ $invoice->date()->format('d/m/Y') }}
-          </td>
-          <td class="px-3 py-2">
-            R$ {{ $invoice->total() }}
-          </td>
-          <td class="px-3 py-2">
-            @if ($invoice->paid)
-            <span class="px-2 py-1 text-xs text-green-800 bg-green-200 rounded">
-              Pago
+            <span class="{{ $invoice->status_class }}">
+              {{ $invoice->status_label }}
             </span>
-            @else
-            <span class="px-2 py-1 text-xs text-red-800 bg-red-200 rounded">
-              Pendente
-            </span>
-            @endif
           </td>
           <td class="px-3 py-2 text-right">
             <a href="{{ $invoice->hosted_invoice_url }}" target="_blank" class="text-blue-600 hover:underline">

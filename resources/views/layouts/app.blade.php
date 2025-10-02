@@ -58,7 +58,6 @@
 
             <x-title-page />
 
-            <x-trial-expiration-warning />
 
             @can('dashboard')
                 @yield('content')

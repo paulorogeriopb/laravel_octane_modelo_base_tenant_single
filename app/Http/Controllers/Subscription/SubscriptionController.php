@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Subscription;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
-use Stripe\Stripe;
-use Stripe\Invoice;
+use Illuminate\Support\Facades\Log;
+use App\Helpers\SubscriptionHelper;
 use App\Models\Plan;
-
+use Carbon\Carbon;
+use Stripe\StripeClient;
 
 class SubscriptionController extends Controller
 {
@@ -21,25 +21,21 @@ class SubscriptionController extends Controller
     /**
      * Checkout de assinatura
      */
-   public function checkout()
+    public function checkout()
     {
         $subscription = auth()->user()->subscription('default');
 
-        // Se já está ativo ou em período de carência, vai pra conta
         if ($subscription && ($subscription->valid() || $subscription->onGracePeriod())) {
             return redirect()->route('subscriptions.account');
         }
 
-         $plan = session('plan');
+        $plan = session('plan');
 
-
-        // Caso contrário, mostra checkout
         return view('subscriptions.checkout', [
             'intent' => auth()->user()->createSetupIntent(),
             'plan' => $plan,
         ]);
     }
-
 
     /**
      * Criar assinatura inicial
@@ -47,184 +43,152 @@ class SubscriptionController extends Controller
     public function store(Request $request)
     {
         try {
-
             $plan = session('plan');
 
             if (!$plan) {
                 return back()->with('error', __('Escolha um plano antes de realizar a assinatura.'));
             }
 
-            $request->user()
-                ->newSubscription('default', $plan->stripe_id)
-                 ->trialDays(7)
-                ->create($request->token);
+            $trialDays = property_exists($plan, 'trial_days') ? (int)$plan->trial_days : 0;
+
+            $subBuilder = $request->user()
+                ->newSubscription('default', $plan->stripe_id);
+
+            if ($trialDays > 0) {
+                $subBuilder->trialDays($trialDays);
+            }
+
+            $subBuilder->create($request->token);
 
             return redirect()->route('subscriptions.account')
                 ->with('success', __('Assinatura criada com sucesso!'));
         } catch (\Exception $e) {
+            Log::error('Erro criando assinatura: ' . $e->getMessage());
             return back()->with('error', __('Erro ao criar assinatura: ') . $e->getMessage());
         }
     }
 
-
-
     /**
      * Conta do assinante (detalhes + faturas)
      */
-public function account()
-{
-    $user = auth()->user();
-    $currentPlan = null;
-    $nextPayment = null;
-    $nextAmount = null;
-    $planEndDate = null;
-    $isTrial = false;
-    $statusLabel = 'Sem assinatura';
-    $statusClass = 'bg-gray-200 text-gray-800';
-    $trialDaysLeft = 0;
-    $trialHours = 0;
-    $trialMinutes = 0;
-    $graceDaysLeft = 0;
-    $graceHours = 0;
-    $graceMinutes = 0;
+    public function account()
+    {
+        $user = auth()->user();
+        $subscription = $user->subscription('default');
 
-    $subscription = $user->subscription('default');
+        // Defaults
+        $currentPlan = null;
+        $nextPayment = null;
+        $nextAmount = null;
+        $planEndDate = null;
+        $statusLabel = 'Sem assinatura';
+        $statusClass = 'bg-gray-200 text-gray-800';
+        $isTrial = false;
+        $trialDaysLeft = 0;
+        $trialHours = 0;
+        $trialMinutes = 0;
+        $graceDaysLeft = 0;
+        $graceHours = 0;
+        $graceMinutes = 0;
+        $remainingPayload = ['days'=>0,'hours'=>0,'minutes'=>0,'ends_at'=>null,'type'=>null];
 
-    if ($subscription) {
-
-        // Atualizar dados do Stripe
-        $stripeSubscription = $subscription->asStripeSubscription();
-        if ($stripeSubscription) {
-            $subscription->ends_at = isset($stripeSubscription->cancel_at)
-                ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->cancel_at)
-                : $subscription->ends_at;
-
-            $subscription->trial_ends_at = isset($stripeSubscription->trial_end)
-                ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end)
-                : $subscription->trial_ends_at;
-        }
-
-        // Status da assinatura
-        if ($subscription->onTrial()) {
-            $statusLabel = 'Em Trial';
-            $statusClass = 'bg-yellow-200 text-yellow-800';
-            $isTrial = true;
-            $nextPayment = $subscription->trial_ends_at;
-            $nextAmount = 'Grátis';
-            $planEndDate = $subscription->trial_ends_at;
-
-            if ($subscription->trial_ends_at && now()->lt($subscription->trial_ends_at)) {
-                $diff = now()->diff($subscription->trial_ends_at);
-                $trialDaysLeft = $diff->days;
-                $trialHours = str_pad($diff->h, 2, '0', STR_PAD_LEFT);
-                $trialMinutes = str_pad($diff->i, 2, '0', STR_PAD_LEFT);
-            }
-
-        } elseif ($subscription->active()) {
-            $statusLabel = 'Ativa';
-            $statusClass = 'bg-blue-200 text-green-800';
-            if ($stripeSubscription?->current_period_end) {
-                $planEndDate = \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end);
-            }
-
+        if ($subscription) {
             try {
-                $stripeClient = new \Stripe\StripeClient(env('STRIPE_SECRET'));
-                $upcomingInvoice = $stripeClient->invoices->createPreview([
+                $stripeSub = $subscription->asStripeSubscription();
+            } catch (\Throwable $e) {
+                $stripeSub = null;
+            }
+
+            // Calcula tempo restante via helper
+            $remainingPayload = SubscriptionHelper::remainingTime($subscription);
+
+            if ($remainingPayload['is_trial'] ?? false) {
+                $statusLabel = 'Período de teste';
+                $statusClass = 'bg-yellow-200 text-yellow-800';
+                $planEndDate = $remainingPayload['ends_at'];
+                $isTrial = true;
+                $trialDaysLeft = $remainingPayload['days'];
+                $trialHours = $remainingPayload['hours'];
+                $trialMinutes = $remainingPayload['minutes'];
+            } elseif ($remainingPayload['is_grace'] ?? false) {
+                $statusLabel = 'Cancelada (Período de Graça)';
+                $statusClass = 'bg-orange-200 text-orange-800';
+                $planEndDate = $remainingPayload['ends_at'];
+                $graceDaysLeft = $remainingPayload['days'];
+                $graceHours = $remainingPayload['hours'];
+                $graceMinutes = $remainingPayload['minutes'];
+            } elseif ($subscription->active()) {
+                $statusLabel = 'Assinatura ativa';
+                $statusClass = 'bg-blue-200 text-green-800';
+                if ($stripeSub?->current_period_end) {
+                    $planEndDate = Carbon::createFromTimestamp($stripeSub->current_period_end);
+                }
+            } elseif ($subscription->cancelled()) {
+                $statusLabel = 'Cancelada';
+                $statusClass = 'bg-red-200 text-red-800';
+                $planEndDate = $subscription->ends_at;
+            }
+
+            // Plano atual
+            $item = $subscription->items()->first();
+            if ($item) {
+                $planModel = Plan::where('stripe_id', $item->stripe_price)->first();
+                $currentPlan = [
+                    'name' => $planModel->name ?? $item->stripe_price,
+                    'price' => $planModel?->price_br ?? number_format(($item->price ?? 0)/100,2,',','.'),
+                    'interval' => $subscription->stripe_price_interval ?? 'Mês',
+                    'features' => $planModel?->features ? json_decode($planModel->features,true) : [],
+                    'limits' => $planModel?->limits ? json_decode($planModel->limits,true) : [],
+                    'trial_days' => $planModel?->trial_days ?? ($item->trial_days ?? 0),
+                ];
+            }
+
+            // Próxima fatura via Stripe Preview
+            try {
+                $stripeClient = new StripeClient(env('STRIPE_SECRET'));
+                $preview = $stripeClient->invoices->createPreview([
                     'customer' => $subscription->stripe_customer,
                     'subscription' => $subscription->stripe_id,
                 ]);
 
-                if ($upcomingInvoice) {
-                    $nextPayment = isset($upcomingInvoice->next_payment_attempt)
-                        ? \Carbon\Carbon::createFromTimestamp($upcomingInvoice->next_payment_attempt)
+                if (!empty($preview)) {
+                    $nextPayment = !empty($preview->next_payment_attempt)
+                        ? Carbon::createFromTimestamp($preview->next_payment_attempt)
                         : $planEndDate;
 
-                    $nextAmount = number_format(($upcomingInvoice->amount_due ?? 0) / 100, 2, ',', '.');
+                    $nextAmount = number_format(($preview->amount_due ?? 0)/100,2,',','.');
                 }
-            } catch (\Exception $e) {
-                $nextPayment = $planEndDate;
-                $nextAmount = number_format(($subscription->items()->first()?->price ?? 0) / 100, 2, ',', '.');
+            } catch (\Throwable $e) {
+                $nextAmount = $nextAmount ?? number_format(($subscription->items()->first()?->price ?? 0)/100,2,',','.');
             }
-
-        } elseif ($subscription->onGracePeriod()) {
-            $statusLabel = 'Cancelada (Período de Graça)';
-            $statusClass = 'bg-orange-200 text-orange-800';
-            $planEndDate = $subscription->ends_at;
-
-            if ($subscription->ends_at && now()->lt($subscription->ends_at)) {
-                $diff = now()->diff($subscription->ends_at);
-                $graceDaysLeft = $diff->days;
-                $graceHours = str_pad($diff->h, 2, '0', STR_PAD_LEFT);
-                $graceMinutes = str_pad($diff->i, 2, '0', STR_PAD_LEFT);
-            }
-
-        } elseif ($subscription->cancelled()) {
-            $statusLabel = 'Cancelada';
-            $statusClass = 'bg-red-200 text-red-800';
-            $planEndDate = $subscription->ends_at;
-        } else {
-            $statusLabel = 'Inativa';
-            $statusClass = 'bg-gray-200 text-gray-800';
-            $planEndDate = $subscription->ends_at;
         }
 
-        // Informações do plano
-        $item = $subscription->items()->first();
-        if ($item) {
-            $planModel = \App\Models\Plan::where('stripe_id', $item->stripe_price)->first();
-            $currentPlan = [
-                'name' => $planModel->name ?? $item->stripe_price,
-                'price' => $planModel?->price_br ?? number_format(($item->price ?? 0) / 100, 2, ',', '.'),
-                'interval' => $subscription->stripe_price_interval ?? 'Mês',
-                'trial_days' => $item->trial_days ?? 0,
-            ];
-        }
+        // Mapear faturas
+        $invoices = $user->invoices()->map(function($invoice){
+            $stripeInvoice = $invoice->asStripeInvoice();
+            $invoice->status_label = match($stripeInvoice->status) {
+                'paid' => 'Pago',
+                'open' => 'Pendente',
+                default => ucfirst($stripeInvoice->status),
+            };
+            $invoice->status_class = match($stripeInvoice->status) {
+                'paid' => 'px-2 py-1 text-xs text-green-800 bg-green-200 rounded',
+                'open' => 'px-2 py-1 text-xs text-red-800 bg-red-200 rounded',
+                default => 'px-2 py-1 text-xs text-gray-800 bg-gray-200 rounded',
+            };
+            $invoice->formatted_total = number_format($stripeInvoice->total/100,2,',','.');
+            $invoice->formatted_date = Carbon::createFromTimestamp($stripeInvoice->created)->format('d/m/Y');
+            $invoice->hosted_url = $stripeInvoice->hosted_invoice_url ?? null;
+            return $invoice;
+        });
+
+        return view('subscriptions.account', compact(
+            'invoices','currentPlan','nextPayment','nextAmount','planEndDate',
+            'subscription','statusLabel','statusClass','remainingPayload',
+            'isTrial','trialDaysLeft','trialHours','trialMinutes',
+            'graceDaysLeft','graceHours','graceMinutes'
+        ));
     }
-
-    // Mapear faturas
-    $invoices = $user->invoices()->map(function ($invoice) {
-        $stripeInvoice = $invoice->asStripeInvoice();
-        if ($stripeInvoice->status === 'paid') {
-            $invoice->status_label = 'Pago';
-            $invoice->status_class = 'px-2 py-1 text-xs text-green-800 bg-green-200 rounded';
-        } elseif ($stripeInvoice->status === 'open') {
-            $invoice->status_label = 'Pendente';
-            $invoice->status_class = 'px-2 py-1 text-xs text-red-800 bg-red-200 rounded';
-        } else {
-            $invoice->status_label = ucfirst($stripeInvoice->status);
-            $invoice->status_class = 'px-2 py-1 text-xs text-gray-800 bg-gray-200 rounded';
-        }
-        $invoice->formatted_total = number_format($stripeInvoice->total / 100, 2, ',', '.');
-        $invoice->formatted_date = \Carbon\Carbon::createFromTimestamp($stripeInvoice->created)->format('d/m/Y');
-        return $invoice;
-    });
-
-    return view('subscriptions.account', compact(
-        'invoices',
-        'currentPlan',
-        'nextPayment',
-        'nextAmount',
-        'planEndDate',
-        'isTrial',
-        'trialDaysLeft',
-        'trialHours',
-        'trialMinutes',
-        'graceDaysLeft',
-        'graceHours',
-        'graceMinutes',
-        'subscription',
-        'statusLabel',
-        'statusClass'
-    ));
-}
-
-
-
-
-
-
-
-
 
     /**
      * Download de fatura
@@ -272,20 +236,15 @@ public function account()
      */
     public function showPlans()
     {
-
-            // Carrega todos os planos ativos
         $plans = Plan::where('active', true)->get();
 
-        // Decodifica JSON de limits e features para cada plano
-        $plans->transform(function ($plan) {
-            $plan->limits = $plan->limits ? json_decode($plan->limits, true) : [];
-            $plan->features = $plan->features ? json_decode($plan->features, true) : [];
+        $plans->transform(function($plan){
+            $plan->limits = $plan->limits ? json_decode($plan->limits,true) : [];
+            $plan->features = $plan->features ? json_decode($plan->features,true) : [];
             return $plan;
         });
 
-        return view('subscriptions.plans', [
-            'plans' => $plans,
-        ]);
+        return view('subscriptions.plans', ['plans'=>$plans]);
     }
 
     /**
@@ -293,6 +252,41 @@ public function account()
      */
     public function updatePlan(Request $request)
     {
+        $request->validate([
+            'plan' => 'required',
+        ]);
 
+        $planInput = $request->input('plan');
+        $plan = Plan::where('id',$planInput)->orWhere('stripe_id',$planInput)->first();
+
+        if (!$plan) {
+            return back()->with('error','Plano inválido.');
+        }
+
+        $subscription = auth()->user()->subscription('default');
+
+        if (!$subscription || !$subscription->active()) {
+            return back()->with('error','Você não tem uma assinatura ativa.');
+        }
+
+        try {
+            $subscription->swap($plan->stripe_id);
+
+            if (!empty($plan->trial_days) && (int)$plan->trial_days > 0) {
+                try {
+                    $stripeClient = new StripeClient(env('STRIPE_SECRET'));
+                    $trialEndsAt = now()->addDays((int)$plan->trial_days)->timestamp;
+                    $stripeClient->subscriptions->update($subscription->stripe_id, ['trial_end' => $trialEndsAt]);
+                } catch (\Throwable $e) {
+                    Log::warning('Não foi possível aplicar trial ao novo plano: '.$e->getMessage());
+                }
+            }
+
+            return redirect()->route('subscriptions.account')
+                ->with('success','Plano alterado com sucesso!');
+        } catch (\Throwable $e) {
+            Log::error('Erro ao trocar plano: '.$e->getMessage());
+            return back()->with('error','Erro ao alterar plano: '.$e->getMessage());
+        }
     }
 }

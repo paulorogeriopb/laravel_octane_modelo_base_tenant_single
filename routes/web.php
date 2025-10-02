@@ -240,11 +240,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('subscriptions.invoice.download');
 
         // Cancelar e resumir assinatura
-        Route::get('/cancel', [SubscriptionController::class, 'cancel'])
+        Route::post('/cancel', [SubscriptionController::class, 'cancel'])
             ->name('subscriptions.cancel');
 
 
-        Route::get('/resume', [SubscriptionController::class, 'resume'])
+        Route::post('/resume', [SubscriptionController::class, 'resume'])
             ->name('subscriptions.resume');
 
 

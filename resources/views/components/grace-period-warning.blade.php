@@ -1,27 +1,24 @@
 @props([
-    'type' => 'trial',
     'days' => null,
     'hours' => null,
     'minutes' => null,
     'endsAt' => null,
 ])
 
-
-@if ($daysLeft !== null)
-    <div class="p-4 mt-4 mb-4 alert-danger">
+@if (($days ?? 0) > 0 || ($hours ?? 0) > 0 || ($minutes ?? 0) > 0)
+    <div class="p-4 mt-4 mb-4 text-yellow-800 bg-yellow-100 rounded shadow grace-period-warning">
         <p>
-            ⚠️ Sua assinatura foi <strong>cancelada</strong>, mas você ainda tem acesso durante o período de
-            <strong>{{ $type }}</strong>.
+            ⚠️ Sua assinatura está em <strong>período de graça</strong>.
         </p>
         <p>
-            Ainda restam
+            Restam
             <strong>{{ $days }}</strong> {{ \Illuminate\Support\Str::plural('dia', $days) }}
-            @if (!is_null($hours) && !is_null($minutes))
+            @if (!is_null($hours))
                 e
                 <strong>{{ str_pad($hours, 2, '0', STR_PAD_LEFT) }}:{{ str_pad($minutes, 2, '0', STR_PAD_LEFT) }}</strong>
                 horas
             @endif
-            de acesso — encerra em <strong>{{ $endsAt?->format('d/m/Y H:i') }}</strong>.
+            — encerra em <strong>{{ $endsAt?->format('d/m/Y H:i') }}</strong>.
         </p>
     </div>
 @endif
