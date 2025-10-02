@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
             UserStatusSeeder::class,
             UserSeeder::class,
 
+            PlanSeeder::class,
+
             TranslationsSeeder::class,
         ]);
     }

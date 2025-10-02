@@ -18,18 +18,26 @@ class SubscriptionController extends Controller
     /**
      * Checkout de assinatura
      */
-    public function checkout()
+   public function checkout()
     {
         $subscription = auth()->user()->subscription('default');
 
+        // Se já está ativo ou em período de carência, vai pra conta
         if ($subscription && ($subscription->valid() || $subscription->onGracePeriod())) {
             return redirect()->route('subscriptions.account');
         }
 
+         $plan = session('plan');
+
+
+
+        // Caso contrário, mostra checkout
         return view('subscriptions.checkout', [
             'intent' => auth()->user()->createSetupIntent(),
+            'plan' => $plan,
         ]);
     }
+
 
     /**
      * Criar assinatura inicial
@@ -37,10 +45,15 @@ class SubscriptionController extends Controller
     public function store(Request $request)
     {
         try {
-            $defaultPlanId = config('plans.start.stripe_id');
+
+            $plan = session('plan');
+
+            if (!$plan) {
+                return back()->with('error', __('Escolha um plano antes de realizar a assinatura.'));
+            }
 
             $request->user()
-                ->newSubscription('default', $defaultPlanId)
+                ->newSubscription('default', $plan->stripe_id)
                 ->create($request->token);
 
             return redirect()->route('subscriptions.account')
@@ -50,13 +63,7 @@ class SubscriptionController extends Controller
         }
     }
 
-    /**
-     * Tela inicial da assinatura
-     */
-    public function start()
-    {
-        return view('subscriptions.start');
-    }
+
 
     /**
      * Conta do assinante (detalhes + faturas)
@@ -121,7 +128,7 @@ class SubscriptionController extends Controller
      */
     public function showPlans()
     {
-        $plans = config('plans');
+        $plan = session('plan');
         $currentPlanId = auth()->user()->subscription('default')?->stripe_price;
 
         return view('subscriptions.plans', [

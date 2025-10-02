@@ -57,7 +57,7 @@
 
                     <div>
 
-                        <a href="{{ route('login') }}"
+                        <a href="{{ route('choice.plan', ['slug' => $plan->slug]) }}"
                             class="block px-4 py-3 font-semibold text-center text-white bg-blue-600 rounded hover:bg-blue-700">
                             Entrar para escolher
                         </a>

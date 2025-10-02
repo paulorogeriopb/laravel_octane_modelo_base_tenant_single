@@ -15,9 +15,9 @@ class CheckChoicePlan
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!session()->has('plan')) {
-            return redirect()->route('subscriptions.change-plan');
-        }
+         if(!session()->has('plan')) {
+                return redirect()->route('subscriptions.change-plan');
+            }
         return $next($request);
     }
 }

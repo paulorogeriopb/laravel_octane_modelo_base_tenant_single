@@ -28,6 +28,7 @@ use App\Http\Controllers\Subscription\SubscriptionController;
 */
 
 Route::get('/', [SiteController::class, 'index'])->name('site.index');
+Route::get('/assinar/{slug}', [SiteController::class, 'createSessionPlan'])->name('choice.plan');
 //Route::get('/', fn() => view('welcome'));
 Route::view('/offline', 'offline');
 
@@ -226,44 +227,47 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
 
-    // Faturas
-    Route::get('/subscriptions/account', [SubscriptionController::class, 'account'])
-        ->name('subscriptions.account');
+   Route::prefix('subscriptions')
 
-    // Faturas Download
-    Route::get('/subscriptions/invoice/{invoiceId}/download',
-    [SubscriptionController::class, 'invoiceDownload']
-)->name('subscriptions.invoice.download');
+    ->group(function () {
+        // Conta e faturas
+        Route::get('/account', [SubscriptionController::class, 'account'])
 
-    // Cancelar assinatura
-    Route::get('/subscriptions/cancel', [SubscriptionController::class, 'cancel'])
-     ->name('subscriptions.cancel');
-
-    // Resumir assinatura
-    Route::get('/subscriptions/resume', [SubscriptionController::class, 'resume'])
-     ->name('subscriptions.resume');
-
-     // Página para mostrar os planos disponíveis
-Route::get('/subscriptions/change-plan', [SubscriptionController::class, 'showPlans'])
-    ->name('subscriptions.change-plan');
-
-// Rota para atualizar o plano selecionado
-Route::post('/subscriptions/update-plan', [SubscriptionController::class, 'updatePlan'])
-    ->name('subscriptions.update-plan');
+            ->name('subscriptions.account');
 
 
-    // Página de checkout
-    Route::get('/subscriptions/checkout', [SubscriptionController::class, 'checkout'])
-        ->name('subscriptions.checkout');
+        Route::get('/invoice/{invoiceId}/download', [SubscriptionController::class, 'invoiceDownload'])
+            ->name('subscriptions.invoice.download');
 
-    // Criar assinatura (store)
-    Route::post('/subscriptions', [SubscriptionController::class, 'store'])
-        ->name('subscriptions.store');
+        // Cancelar e resumir assinatura
+        Route::get('/cancel', [SubscriptionController::class, 'cancel'])
+            ->name('subscriptions.cancel');
 
-    // Página de início após assinatura
-    Route::get('/subscriptions/start', [SubscriptionController::class, 'start'])
-    ->middleware('subscribed')
-    ->name('subscriptions.start');
+
+        Route::get('/resume', [SubscriptionController::class, 'resume'])
+            ->name('subscriptions.resume');
+
+
+        // Alteração de plano
+        Route::get('/change-plan', [SubscriptionController::class, 'showPlans'])
+            ->name('subscriptions.change-plan');
+
+
+        Route::post('/update-plan', [SubscriptionController::class, 'updatePlan'])
+            ->name('subscriptions.update-plan');
+
+        // Checkout e assinatura
+        Route::get('/checkout', [SubscriptionController::class, 'checkout'])
+            ->middleware(['check.choice.plan'])
+            ->name('subscriptions.checkout');
+
+
+        Route::post('/', [SubscriptionController::class, 'store'])
+            ->middleware(['check.choice.plan'])
+            ->name('subscriptions.store');
+
+
+    });
 
 
 

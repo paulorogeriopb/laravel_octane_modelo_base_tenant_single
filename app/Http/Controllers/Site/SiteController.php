@@ -31,7 +31,7 @@ class SiteController extends Controller
 
     if (!$plan) {
         return redirect()->route('site.index')
-            ->with('error', __('Plano não encontrado.'));
+            ->with('error', __('Escolha um plano.'));
     }
 
     // Armazena o plano na sessão

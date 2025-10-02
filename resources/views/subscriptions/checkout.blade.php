@@ -8,6 +8,7 @@
 
         <x-alert />
 
+        <p class="mb-4">Plano selecionado: <strong>{{ $plan->name }}</strong></p>
         <form action="{{ route('subscriptions.store') }}" method="POST" class="space-y-4" id="payment-form">
             @csrf
 

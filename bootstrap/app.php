@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'subscribed' => \App\Http\Middleware\EnsureUserIsSubscribed::class,
+            'check.choice.plan' => \App\Http\Middleware\CheckChoicePlan::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
