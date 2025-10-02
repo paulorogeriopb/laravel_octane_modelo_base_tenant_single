@@ -76,7 +76,11 @@
                     </a>
                 </div>
             @else
-                <p class="text-gray-600 dark:text-gray-400">{{ __('Você ainda não possui uma assinatura ativa.') }}</p>
+                <p class="text-gray-600 dark:text-gray-400">{{ __('Você ainda não possui uma assinatura ativa.') }}
+                    <a href="{{ route('subscriptions.change-plan') }}" class="px-4 py-2 btn btn-default">
+                        {{ __('Escolher Plano') }}
+                    </a>
+                </p>
             @endif
         </div>
 

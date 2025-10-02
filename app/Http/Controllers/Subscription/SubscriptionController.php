@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Helpers\PlanHelper;
 use Stripe\StripeClient;
+use App\Models\Plan;
 
 class SubscriptionController extends Controller
 {
@@ -128,12 +129,19 @@ class SubscriptionController extends Controller
      */
     public function showPlans()
     {
-        $plan = session('plan');
-        $currentPlanId = auth()->user()->subscription('default')?->stripe_price;
+
+            // Carrega todos os planos ativos
+        $plans = Plan::where('active', true)->get();
+
+        // Decodifica JSON de limits e features para cada plano
+        $plans->transform(function ($plan) {
+            $plan->limits = $plan->limits ? json_decode($plan->limits, true) : [];
+            $plan->features = $plan->features ? json_decode($plan->features, true) : [];
+            return $plan;
+        });
 
         return view('subscriptions.plans', [
             'plans' => $plans,
-            'currentPlanId' => $currentPlanId,
         ]);
     }
 
