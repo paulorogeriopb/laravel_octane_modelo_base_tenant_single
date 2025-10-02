@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Subscription;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Helpers\PlanHelper;
-use Stripe\StripeClient;
+use Carbon\Carbon;
+use Stripe\Stripe;
+use Stripe\Invoice;
 use App\Models\Plan;
+
 
 class SubscriptionController extends Controller
 {
@@ -29,7 +31,6 @@ class SubscriptionController extends Controller
         }
 
          $plan = session('plan');
-
 
 
         // Caso contrário, mostra checkout
@@ -55,6 +56,7 @@ class SubscriptionController extends Controller
 
             $request->user()
                 ->newSubscription('default', $plan->stripe_id)
+                 ->trialDays(7)
                 ->create($request->token);
 
             return redirect()->route('subscriptions.account')
@@ -69,19 +71,141 @@ class SubscriptionController extends Controller
     /**
      * Conta do assinante (detalhes + faturas)
      */
-    public function account()
-    {
-        $user = auth()->user();
-        $invoices = $user->invoices();
+public function account()
+{
+    $user = auth()->user();
+    $currentPlan = null;
+    $nextPayment = null;
+    $nextAmount = null;
+    $planEndDate = null;
+    $isTrial = false;
+    $statusLabel = 'Sem assinatura';
+    $statusClass = 'bg-gray-200 text-gray-800';
+    $trialDaysLeft = 0;
+    $trialHours = 0;
+    $trialMinutes = 0;
+    $graceDaysLeft = null;
 
-        $currentPlanId = $user->subscription('default')?->stripe_price;
-        $currentPlan = PlanHelper::getPlanByStripeId($currentPlanId);
+    $subscription = $user->subscription('default');
 
-        return view('subscriptions.account', [
-            'invoices' => $invoices,
-            'currentPlan' => $currentPlan,
-        ]);
+    if ($subscription) {
+        // Status da assinatura
+        if ($subscription->onTrial()) {
+            $statusLabel = 'Em Trial';
+            $statusClass = 'bg-yellow-200 text-yellow-800';
+            $isTrial = true;
+            $nextPayment = $subscription->trial_ends_at;
+            $nextAmount = 'Grátis';
+            $planEndDate = $subscription->trial_ends_at;
+
+            if ($subscription->trial_ends_at) {
+                $diff = $subscription->trial_ends_at->diff(now());
+                $trialDaysLeft = $diff->d;
+                $trialHours = str_pad($diff->h, 2, '0', STR_PAD_LEFT);
+                $trialMinutes = str_pad($diff->i, 2, '0', STR_PAD_LEFT);
+            }
+
+        } elseif ($subscription->active()) {
+            $statusLabel = 'Ativa';
+            $statusClass = 'bg-blue-200 text-green-800';
+            $stripeSubscription = $subscription->asStripeSubscription();
+
+            if ($stripeSubscription?->current_period_end) {
+                $planEndDate = \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end);
+            }
+
+            try {
+                $stripeClient = new \Stripe\StripeClient(env('STRIPE_SECRET'));
+                $upcomingInvoice = $stripeClient->invoices->createPreview([
+                    'customer' => $subscription->stripe_customer,
+                    'subscription' => $subscription->stripe_id,
+                ]);
+
+                if ($upcomingInvoice) {
+                    $nextPayment = isset($upcomingInvoice->next_payment_attempt)
+                        ? \Carbon\Carbon::createFromTimestamp($upcomingInvoice->next_payment_attempt)
+                        : $planEndDate;
+
+                    $nextAmount = number_format(($upcomingInvoice->amount_due ?? 0) / 100, 2, ',', '.');
+                }
+            } catch (\Exception $e) {
+                $nextPayment = $planEndDate;
+                $nextAmount = number_format(($subscription->items()->first()?->price ?? 0) / 100, 2, ',', '.');
+            }
+
+        } elseif ($subscription->onGracePeriod()) {
+            $statusLabel = 'Cancelada (Período de Graça)';
+            $statusClass = 'bg-orange-200 text-orange-800';
+            $planEndDate = $subscription->ends_at;
+
+            if ($subscription->ends_at) {
+                $graceDaysLeft = now()->diffInDays($subscription->ends_at, false);
+            }
+        } elseif ($subscription->cancelled()) {
+            $statusLabel = 'Cancelada';
+            $statusClass = 'bg-red-200 text-red-800';
+            $planEndDate = $subscription->ends_at;
+        } else {
+            $statusLabel = 'Inativa';
+            $statusClass = 'bg-gray-200 text-gray-800';
+            $planEndDate = $subscription->ends_at;
+        }
+
+        // Informações do plano
+        $item = $subscription->items()->first();
+        if ($item) {
+            $planModel = \App\Models\Plan::where('stripe_id', $item->stripe_price)->first();
+            $currentPlan = [
+                'name' => $planModel->name ?? $item->stripe_price,
+                'price' => $planModel?->price_br ?? number_format(($item->price ?? 0) / 100, 2, ',', '.'),
+                'interval' => $subscription->stripe_price_interval ?? 'Mês',
+                'trial_days' => $item->trial_days ?? 0,
+            ];
+        }
     }
+
+    // Mapear faturas
+    $invoices = $user->invoices()->map(function ($invoice) {
+        $stripeInvoice = $invoice->asStripeInvoice();
+        if ($stripeInvoice->status === 'paid') {
+            $invoice->status_label = 'Pago';
+            $invoice->status_class = 'px-2 py-1 text-xs text-green-800 bg-green-200 rounded';
+        } elseif ($stripeInvoice->status === 'open') {
+            $invoice->status_label = 'Pendente';
+            $invoice->status_class = 'px-2 py-1 text-xs text-red-800 bg-red-200 rounded';
+        } else {
+            $invoice->status_label = ucfirst($stripeInvoice->status);
+            $invoice->status_class = 'px-2 py-1 text-xs text-gray-800 bg-gray-200 rounded';
+        }
+        $invoice->formatted_total = number_format($stripeInvoice->total / 100, 2, ',', '.');
+        $invoice->formatted_date = \Carbon\Carbon::createFromTimestamp($stripeInvoice->created)->format('d/m/Y');
+        return $invoice;
+    });
+
+    return view('subscriptions.account', compact(
+        'invoices',
+        'currentPlan',
+        'nextPayment',
+        'nextAmount',
+        'planEndDate',
+        'isTrial',
+        'trialDaysLeft',
+        'trialHours',
+        'trialMinutes',
+        'graceDaysLeft',
+        'subscription',
+        'statusLabel',
+        'statusClass'
+    ));
+}
+
+
+
+
+
+
+
+
 
     /**
      * Download de fatura
@@ -150,23 +274,6 @@ class SubscriptionController extends Controller
      */
     public function updatePlan(Request $request)
     {
-        $request->validate([
-            'plan' => 'required|string',
-        ]);
 
-        $plan = PlanHelper::getPlanByKey($request->plan);
-
-        if (!$plan) {
-            return back()->with('error', __('Plano inválido.'));
-        }
-
-        try {
-            auth()->user()->subscription('default')->swap($plan['stripe_id']);
-
-            return redirect()->route('subscriptions.account')
-                ->with('success', __('Plano alterado com sucesso!'));
-        } catch (\Exception $e) {
-            return back()->with('error', __('Erro ao alterar plano: ') . $e->getMessage());
-        }
     }
 }
