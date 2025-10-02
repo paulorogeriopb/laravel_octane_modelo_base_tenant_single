@@ -84,11 +84,26 @@ public function account()
     $trialDaysLeft = 0;
     $trialHours = 0;
     $trialMinutes = 0;
-    $graceDaysLeft = null;
+    $graceDaysLeft = 0;
+    $graceHours = 0;
+    $graceMinutes = 0;
 
     $subscription = $user->subscription('default');
 
     if ($subscription) {
+
+        // Atualizar dados do Stripe
+        $stripeSubscription = $subscription->asStripeSubscription();
+        if ($stripeSubscription) {
+            $subscription->ends_at = isset($stripeSubscription->cancel_at)
+                ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->cancel_at)
+                : $subscription->ends_at;
+
+            $subscription->trial_ends_at = isset($stripeSubscription->trial_end)
+                ? \Carbon\Carbon::createFromTimestamp($stripeSubscription->trial_end)
+                : $subscription->trial_ends_at;
+        }
+
         // Status da assinatura
         if ($subscription->onTrial()) {
             $statusLabel = 'Em Trial';
@@ -98,9 +113,9 @@ public function account()
             $nextAmount = 'Grátis';
             $planEndDate = $subscription->trial_ends_at;
 
-            if ($subscription->trial_ends_at) {
-                $diff = $subscription->trial_ends_at->diff(now());
-                $trialDaysLeft = $diff->d;
+            if ($subscription->trial_ends_at && now()->lt($subscription->trial_ends_at)) {
+                $diff = now()->diff($subscription->trial_ends_at);
+                $trialDaysLeft = $diff->days;
                 $trialHours = str_pad($diff->h, 2, '0', STR_PAD_LEFT);
                 $trialMinutes = str_pad($diff->i, 2, '0', STR_PAD_LEFT);
             }
@@ -108,8 +123,6 @@ public function account()
         } elseif ($subscription->active()) {
             $statusLabel = 'Ativa';
             $statusClass = 'bg-blue-200 text-green-800';
-            $stripeSubscription = $subscription->asStripeSubscription();
-
             if ($stripeSubscription?->current_period_end) {
                 $planEndDate = \Carbon\Carbon::createFromTimestamp($stripeSubscription->current_period_end);
             }
@@ -138,9 +151,13 @@ public function account()
             $statusClass = 'bg-orange-200 text-orange-800';
             $planEndDate = $subscription->ends_at;
 
-            if ($subscription->ends_at) {
-                $graceDaysLeft = now()->diffInDays($subscription->ends_at, false);
+            if ($subscription->ends_at && now()->lt($subscription->ends_at)) {
+                $diff = now()->diff($subscription->ends_at);
+                $graceDaysLeft = $diff->days;
+                $graceHours = str_pad($diff->h, 2, '0', STR_PAD_LEFT);
+                $graceMinutes = str_pad($diff->i, 2, '0', STR_PAD_LEFT);
             }
+
         } elseif ($subscription->cancelled()) {
             $statusLabel = 'Cancelada';
             $statusClass = 'bg-red-200 text-red-800';
@@ -193,6 +210,8 @@ public function account()
         'trialHours',
         'trialMinutes',
         'graceDaysLeft',
+        'graceHours',
+        'graceMinutes',
         'subscription',
         'statusLabel',
         'statusClass'

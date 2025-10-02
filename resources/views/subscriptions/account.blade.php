@@ -87,7 +87,7 @@
                             {{ __('Reativar Assinatura') }}
                         </a>
                     @else
-                        <a href="{{ route('subscriptions.cancel') }}" class="px-4 py-2 font-medium btn-danger">
+                        <a href="{{ route('subscriptions.cancel') }}" class="px-4 py-2 font-medium btn-danger ">
                             {{ __('Cancelar Assinatura') }}
                         </a>
                     @endif
