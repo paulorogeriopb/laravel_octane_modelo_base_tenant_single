@@ -1,6 +1,6 @@
 {
     "private": true,
-    "version": "1.0.17",
+    "version": "1.0.18",
     "scripts": {
         "commit": "git-cz",
         "build": "vite build",
