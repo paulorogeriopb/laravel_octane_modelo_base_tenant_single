@@ -18,6 +18,7 @@ use App\Http\Controllers\Auth\EmailVerificationCodeController;
 use App\Http\Controllers\Auth\ForgotPasswordCodeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Site\SiteController;
 use App\Http\Controllers\Subscription\SubscriptionController;
 
 /*
@@ -26,7 +27,8 @@ use App\Http\Controllers\Subscription\SubscriptionController;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', fn() => view('welcome'));
+Route::get('/', [SiteController::class, 'index'])->name('site.index');
+//Route::get('/', fn() => view('welcome'));
 Route::view('/offline', 'offline');
 
 
