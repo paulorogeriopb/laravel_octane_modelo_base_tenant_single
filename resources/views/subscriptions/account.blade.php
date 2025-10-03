@@ -16,7 +16,7 @@
 
                     @if ($currentPlan)
                         <span class="text-lg font-semibold">
-                            {{ $currentPlan['name'] }} <span class="text-gray-500">/ {{ $currentPlan['interval'] }}</span>
+                            {{ $currentPlan['name'] }}
                         </span>
                     @endif
                 </div>
@@ -25,7 +25,8 @@
                     <div>
                         <p class="text-sm text-gray-500">Valor do Plano</p>
                         <p class="text-lg font-medium">
-                            R$ {{ $currentPlan['price'] ?? '-' }}
+                            R$ {{ $currentPlan['price'] ?? '-' }} <span class="text-gray-500">/
+                                {{ $currentPlan['interval'] }} </span>
                         </p>
                     </div>
 
@@ -43,6 +44,9 @@
                             </p>
                         </div>
                     @endif
+
+
+
 
                     <div>
                         <p class="text-sm text-gray-500">Próxima Cobrança</p>
@@ -80,10 +84,15 @@
                 </div>
 
                 {{-- Avisos: trial ou grace --}}
-                @if (!empty($remainingPayload['type']) && $remainingPayload['type'] === 'grace')
-                    <x-grace-period-warning :days="$remainingPayload['days']" :hours="$remainingPayload['hours']" :minutes="$remainingPayload['minutes']" :ends-at="$remainingPayload['ends_at']" />
-                @elseif (!empty($remainingPayload['type']) && $remainingPayload['type'] === 'trial')
-                    <x-trial-expiration-warning :days="$remainingPayload['days']" :hours="$remainingPayload['hours']" :minutes="$remainingPayload['minutes']" :ends-at="$remainingPayload['ends_at']" />
+
+
+
+                @if ($remainingPayload)
+                    @if ($remainingPayload['is_trial'])
+                        <x-trial-expiration-warning ... />
+                    @elseif ($remainingPayload['is_grace'])
+                        <x-grace-period-warning ... />
+                    @endif
                 @endif
             @else
                 <p class="text-gray-600">Você ainda não possui nenhuma assinatura ativa.</p>

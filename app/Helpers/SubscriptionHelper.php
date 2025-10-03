@@ -3,7 +3,6 @@
 namespace App\Helpers;
 
 use Carbon\Carbon;
-use Stripe\StripeClient;
 
 class SubscriptionHelper
 {
@@ -34,69 +33,53 @@ class SubscriptionHelper
             'is_grace'  => false,
         ];
 
-        if (! $subscription) {
+        if (!$subscription) {
             return $result;
         }
 
-        // Recarrega dados Stripe (tenta obter atualizações)
+        // Tenta obter dados atualizados do Stripe
         try {
             $stripeSub = $subscription->asStripeSubscription();
         } catch (\Throwable $e) {
             $stripeSub = null;
         }
 
-        // Detecta trial
+        // 1️⃣ Verifica se está em período de trial
         if ($subscription->onTrial()) {
-            $endsAt = $subscription->trial_ends_at;
+            $endsAt = $subscription->trial_ends_at ?? null;
 
-            // fallback para Stripe raw
-            if (! $endsAt && $stripeSub && ! empty($stripeSub->trial_end)) {
-                $endsAt = \Carbon\Carbon::createFromTimestamp($stripeSub->trial_end);
+            if (!$endsAt && $stripeSub && !empty($stripeSub->trial_end)) {
+                $endsAt = Carbon::createFromTimestamp($stripeSub->trial_end);
             }
 
-            $result['type'] = 'trial';
-            $result['is_trial'] = true;
-            $result['ends_at'] = $endsAt;
+            if ($endsAt && now()->lt($endsAt)) {
+                $result['type'] = 'trial';
+                $result['is_trial'] = true;
+                $result['ends_at'] = $endsAt;
+            }
         }
-        // Detecta período de graça (grace/cancel_at)
-        elseif ($subscription->onGracePeriod()) {
-            $endsAt = $subscription->ends_at;
+        // 2️⃣ Verifica se está em período de graça (grace)
+        elseif ($subscription->onGracePeriod() && ! $subscription->onTrial()) {
+            $endsAt = $subscription->ends_at ?? null;
 
-            if (! $endsAt && $stripeSub && ! empty($stripeSub->cancel_at)) {
-                $endsAt = \Carbon\Carbon::createFromTimestamp($stripeSub->cancel_at);
+            if (!$endsAt && $stripeSub && !empty($stripeSub->cancel_at)) {
+                $endsAt = Carbon::createFromTimestamp($stripeSub->cancel_at);
             }
 
-            $result['type'] = 'grace';
-            $result['is_grace'] = true;
-            $result['ends_at'] = $endsAt;
-        } else {
-            // Também cobrir caso o Stripe tenha cancel_at definido, mesmo sem Cashier marcar grace
-            if ($stripeSub && ! empty($stripeSub->cancel_at)) {
-                $endsAt = \Carbon\Carbon::createFromTimestamp($stripeSub->cancel_at);
+            // Só considera grace se houver pelo menos 1 hora restante
+            if ($endsAt && now()->lt($endsAt) && now()->diffInHours($endsAt) > 0) {
                 $result['type'] = 'grace';
                 $result['is_grace'] = true;
                 $result['ends_at'] = $endsAt;
             }
         }
 
-        // Se temos um ends_at válido e no futuro, calcula dias/horas/minutos
+        // 3️⃣ Calcula dias, horas e minutos restantes
         if ($result['ends_at'] instanceof Carbon && now()->lt($result['ends_at'])) {
             $diff = now()->diff($result['ends_at']);
             $result['days'] = (int) $diff->d;
             $result['hours'] = (int) $diff->h;
             $result['minutes'] = (int) $diff->i;
-        } else {
-            // se terminou ou não existe, mantemos zeros
-            $result['days'] = 0;
-            $result['hours'] = 0;
-            $result['minutes'] = 0;
-            // se ends_at passou, podemos nullificar ends_at para evitar mostrar datas passadas
-            if ($result['ends_at'] instanceof Carbon && now()->gte($result['ends_at'])) {
-                $result['ends_at'] = null;
-                $result['type'] = null;
-                $result['is_trial'] = false;
-                $result['is_grace'] = false;
-            }
         }
 
         return $result;
