@@ -38,23 +38,12 @@
         <div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
             @foreach ($plans as $plan)
                 @php
-                    // Determina se é o plano ativo
-                    $isActive = $currentPlanId === $plan->stripe_id;
+                    $isCurrentPlan = $currentPlanId === $plan->stripe_id;
+                    $isUpgrade = $currentPlanPrice > 0 && $plan->price > $currentPlanPrice;
+                    $isDowngrade = $currentPlanPrice > 0 && $plan->price < $currentPlanPrice;
+                    $forceSobeConsulta = $plan->price == 0;
 
-                    // Determina se o plano é inferior (downgrade)
-                    $isInferior = $currentPlanPrice > 0 && $plan->price < $currentPlanPrice;
-
-                    // Define a classe e o texto do botão
-                    if ($isActive) {
-                        $buttonText = 'Plano Ativo';
-                        $buttonDisabled = true;
-                    } elseif ($isInferior) {
-                        $buttonText = 'Plano Inferior';
-                        $buttonDisabled = true;
-                    } else {
-                        $buttonText = 'Entrar para escolher';
-                        $buttonDisabled = false;
-                    }
+                    $buttonText = $forceSobeConsulta ? 'Sob Consulta' : 'Entrar para escolher';
                 @endphp
 
                 <div x-show="tab === '{{ $plan->billing_cycle }}'" x-transition
@@ -71,12 +60,14 @@
                     <p class="mb-4 text-gray-400">{{ $plan->description }}</p>
 
                     <div class="mb-4">
-                        <span class="mr-2 text-sm text-gray-400 line-through">
-                            R${{ number_format($plan->price * 1.3, 2, ',', '.') }}
-                        </span>
+                        @if ($plan->price > 0)
+                            <span class="mr-2 text-sm text-gray-400 line-through">
+                                R${{ number_format($plan->price * 1.3, 2, ',', '.') }}
+                            </span>
+                        @endif
                         <span class="text-xl font-bold text-blue-600">
-                            R${{ number_format($plan->price, 2, ',', '.') }} /
-                            {{ $plan->billing_cycle === 'monthly' ? 'mês' : 'ano' }}
+                            {{ $plan->price > 0 ? 'R$' . number_format($plan->price, 2, ',', '.') : 'Sob Consulta' }}
+                            / {{ $plan->billing_cycle === 'monthly' ? 'mês' : 'ano' }}
                         </span>
                     </div>
 
@@ -89,16 +80,35 @@
                     @endif
 
                     <div>
-                        @if ($buttonDisabled)
-                            <button type="button"
-                                class="w-full px-4 py-3 font-semibold text-center text-white bg-gray-400 rounded cursor-not-allowed">
-                                {{ $buttonText }}
-                            </button>
-                        @else
+                        @if (!$user || !$currentPlan)
+                            <!-- Usuário deslogado ou logado sem assinatura -->
                             <a href="{{ route('choice.plan', ['slug' => $plan->slug]) }}"
                                 class="block px-4 py-3 font-semibold text-center text-white bg-blue-600 rounded hover:bg-blue-700">
                                 {{ $buttonText }}
                             </a>
+                        @else
+                            <!-- Usuário logado com assinatura ativa -->
+                            <form action="{{ route('subscriptions.update-plan') }}" method="POST" class="mt-auto">
+                                @csrf
+                                <input type="hidden" name="plan" value="{{ $plan->id }}">
+
+                                @if ($isCurrentPlan && !$forceSobeConsulta)
+                                    <button type="button" disabled
+                                        class="w-full px-4 py-3 font-semibold text-center text-white bg-gray-400 rounded cursor-not-allowed">
+                                        Plano Ativo
+                                    </button>
+                                @elseif($isUpgrade || $forceSobeConsulta)
+                                    <button type="submit"
+                                        class="w-full px-4 py-3 font-semibold text-center text-white bg-blue-600 rounded cursor-pointer hover:bg-blue-700">
+                                        {{ $forceSobeConsulta ? 'Sob Consulta' : 'Sobe Consulta' }}
+                                    </button>
+                                @elseif($isDowngrade)
+                                    <button type="button" disabled
+                                        class="w-full px-4 py-3 font-semibold text-center text-white bg-gray-400 rounded cursor-not-allowed">
+                                        Plano Inferior
+                                    </button>
+                                @endif
+                            </form>
                         @endif
                     </div>
                 </div>
