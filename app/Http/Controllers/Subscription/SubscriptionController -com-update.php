@@ -273,47 +273,47 @@ class SubscriptionController extends Controller
 
 public function updatePlan(Request $request)
 {
-    $request->validate([
-        'plan' => 'required',
-    ]);
+    $request->validate(['plan' => 'required']);
 
     $user = $request->user();
-
-    // Busca o plano escolhido
-    $plan = Plan::where('id', $request->plan)
-        ->orWhere('stripe_id', $request->plan)
-        ->first();
+    $plan = Plan::where('id', $request->plan)->orWhere('stripe_id', $request->plan)->first();
 
     if (!$plan) {
         return back()->with('error', 'Plano inválido.');
     }
 
     $subscription = $user->subscription('default');
-    if (!$subscription || !$subscription->active()) {
-        return back()->with('error', 'Você não possui uma assinatura ativa.');
-    }
 
     try {
-        // Cria o cliente Stripe se ainda não existir
         if (!$user->stripe_id) {
             $user->createAsStripeCustomer();
         }
 
-        // Troca de plano, remove trial e sem proration
-        $subscription->swap($plan->stripe_id);
+        $paymentMethod = $user->defaultPaymentMethod();
 
-        // ⚡ Força cobrança imediata do valor total do novo plano
-        $subscription->invoice();
+        if (!$paymentMethod) {
+            return back()->with('error', 'Nenhum método de pagamento encontrado.');
+        }
 
-        return redirect()
-            ->route('subscriptions.account')
-            ->with('success', 'Plano alterado e cobrado com sucesso!');
+        // 1️⃣ Cancela a assinatura antiga imediatamente
+        if ($subscription && $subscription->active()) {
+            $subscription->cancelNow();
+        }
 
-    } catch (\Exception $e) {
-        Log::error('Erro ao trocar plano: ' . $e->getMessage());
-        return back()->with('error', 'Erro ao alterar plano: ' . $e->getMessage());
+        // 2️⃣ Cria nova assinatura cobrando integralmente
+        $user->newSubscription('default', $plan->stripe_id)
+             ->trialDays(0) // remove trial
+             ->create($paymentMethod->id); // paga imediatamente
+
+        return redirect()->route('subscriptions.account')
+                         ->with('success', 'Plano alterado com sucesso e cobrado integralmente!');
+
+    } catch (\Throwable $e) {
+        \Log::error('Erro ao trocar plano: '.$e->getMessage());
+        return back()->with('error', 'Erro ao alterar plano: '.$e->getMessage());
     }
 }
+
 
 
 

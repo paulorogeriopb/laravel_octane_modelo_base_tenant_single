@@ -1,17 +1,6 @@
 @php
     $user = auth()->user();
-
-    if ($user) {
-        $currentPlan = $user->subscription('default');
-        $currentPlanPrice = $currentPlan?->stripe_price
-            ? $plans->firstWhere('stripe_id', $currentPlan->stripe_price)?->price ?? 0
-            : 0;
-        $currentPlanId = $currentPlan?->stripe_price ?? null;
-    } else {
-        $currentPlan = null;
-        $currentPlanPrice = 0;
-        $currentPlanId = null;
-    }
+    $currentPlanId = $currentPlanId ?? ($user?->subscription('default')?->stripe_price ?? null);
 @endphp
 
 <div class="mx-auto content-box">
@@ -20,7 +9,6 @@
     <x-alert />
 
     <div x-data="{ tab: 'monthly' }" class="mx-auto max-w-7xl">
-        <!-- Botões de ciclo de cobrança -->
         <div class="flex justify-center mb-8 space-x-4">
             <button @click="tab = 'monthly'"
                 :class="tab === 'monthly' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'"
@@ -34,29 +22,8 @@
             </button>
         </div>
 
-        <!-- Lista de planos -->
         <div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
             @foreach ($plans as $plan)
-                @php
-                    // Determina se é o plano ativo
-                    $isActive = $currentPlanId === $plan->stripe_id;
-
-                    // Determina se o plano é inferior (downgrade)
-                    $isInferior = $currentPlanPrice > 0 && $plan->price < $currentPlanPrice;
-
-                    // Define a classe e o texto do botão
-                    if ($isActive) {
-                        $buttonText = 'Plano Ativo';
-                        $buttonDisabled = true;
-                    } elseif ($isInferior) {
-                        $buttonText = 'Plano Inferior';
-                        $buttonDisabled = true;
-                    } else {
-                        $buttonText = 'Entrar para escolher';
-                        $buttonDisabled = false;
-                    }
-                @endphp
-
                 <div x-show="tab === '{{ $plan->billing_cycle }}'" x-transition
                     class="flex flex-col p-6 transition bg-white shadow-lg rounded-2xl hover:shadow-xl
                     {{ $plan->recommended ? 'border-2 border-blue-600' : '' }}">
@@ -89,17 +56,12 @@
                     @endif
 
                     <div>
-                        @if ($buttonDisabled)
-                            <button type="button"
-                                class="w-full px-4 py-3 font-semibold text-center text-white bg-gray-400 rounded cursor-not-allowed">
-                                {{ $buttonText }}
-                            </button>
-                        @else
-                            <a href="{{ route('choice.plan', ['slug' => $plan->slug]) }}"
-                                class="block px-4 py-3 font-semibold text-center text-white bg-blue-600 rounded hover:bg-blue-700">
-                                {{ $buttonText }}
-                            </a>
-                        @endif
+
+                        <a href="{{ route('choice.plan', ['slug' => $plan->slug]) }}"
+                            class="block px-4 py-3 font-semibold text-center text-white bg-blue-600 rounded hover:bg-blue-700">
+                            Entrar para escolher
+                        </a>
+
                     </div>
                 </div>
             @endforeach

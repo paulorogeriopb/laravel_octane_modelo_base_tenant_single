@@ -84,14 +84,12 @@
                 </div>
 
                 {{-- Avisos: trial ou grace --}}
-
-
-
-                @if ($remainingPayload)
-                    @if ($remainingPayload['is_trial'])
-                        <x-trial-expiration-warning ... />
-                    @elseif ($remainingPayload['is_grace'])
-                        <x-grace-period-warning ... />
+                @if ($subscription && $remainingPayload)
+                    @if ($remainingPayload['is_trial'] && $subscription->onTrial())
+                        <x-trial-expiration-warning :days="$remainingPayload['days']" :hours="$remainingPayload['hours']" :minutes="$remainingPayload['minutes']"
+                            :ends-at="$remainingPayload['ends_at']" />
+                    @elseif ($remainingPayload['is_grace'] && !$subscription->active())
+                        <x-grace-period-warning :days="$remainingPayload['days']" :hours="$remainingPayload['hours']" :minutes="$remainingPayload['minutes']" :ends-at="$remainingPayload['ends_at']" />
                     @endif
                 @endif
             @else
