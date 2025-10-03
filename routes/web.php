@@ -20,6 +20,8 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Site\SiteController;
 use App\Http\Controllers\Subscription\SubscriptionController;
+use App\Http\Controllers\Subscription\PaymentMethodController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -267,6 +269,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('subscriptions.store');
 
 
+    });
+
+
+    Route::prefix('payment-methods')
+        ->group(function () {
+        Route::get('/', [PaymentMethodController::class, 'index'])->name('payment-methods.index');
+        Route::post('/', [PaymentMethodController::class, 'store'])->name('payment-methods.store');
+        Route::delete('/{paymentMethodId}', [PaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
+        Route::post('/{paymentMethodId}/default', [PaymentMethodController::class, 'setDefault'])->name('payment-methods.default');
     });
 
 
