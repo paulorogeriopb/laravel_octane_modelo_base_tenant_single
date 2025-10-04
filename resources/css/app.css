@@ -14,7 +14,7 @@
     --dark-secondary: #191e24;
     --dark-tertiary: #14191f;
 
-    --light-primary: #f4f6f9;
+    --light-primary: #fbfbfd;
     --light-secondary: #ebeef4;
     --light-tertiary: #d8dee9;
 
@@ -55,6 +55,9 @@
 }
 
 @layer components {
+    .cor-default {
+        @apply text-(--default);
+    }
     h2 {
         @apply text-2xl;
     }
