@@ -240,7 +240,7 @@ class SubscriptionController extends Controller
     /**
      * Reativar assinatura em período de graça ou cancelamento agendado
      */
-    public function resume()
+   public function resume()
 {
     $user = auth()->user();
     $subscription = $user->subscription('default');
@@ -266,7 +266,6 @@ class SubscriptionController extends Controller
     return redirect()->route('subscriptions.account')
         ->with('error', __('A assinatura não pode ser reativada.'));
 }
-
 
     /**
      * Mostrar planos disponíveis
