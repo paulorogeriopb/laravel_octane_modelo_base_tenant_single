@@ -19,7 +19,7 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * Checkout de assinatura
+     * Tela de checkout da assinatura
      */
     public function checkout()
     {
@@ -40,43 +40,40 @@ class SubscriptionController extends Controller
     /**
      * Criar assinatura inicial
      */
-   public function store(Request $request)
-{
-    try {
-        $plan = session('plan');
+    public function store(Request $request)
+    {
+        try {
+            $plan = session('plan');
 
-        if (!$plan) {
-            return back()->with('error', __('Escolha um plano antes de realizar a assinatura.'));
+            if (!$plan) {
+                return back()->with('error', __('Escolha um plano antes de realizar a assinatura.'));
+            }
+
+            $trialDays = 0; // Ajuste conforme necessidade
+
+            $subBuilder = $request->user()->newSubscription('default', $plan->stripe_id);
+
+            if ($trialDays > 0) {
+                $subBuilder->trialDays($trialDays);
+            }
+
+            $subBuilder->create($request->token);
+
+            return redirect()->route('subscriptions.account')
+                ->with('success', __('Assinatura criada com sucesso!'));
+        } catch (\Exception $e) {
+            Log::error('Erro criando assinatura: ' . $e->getMessage());
+            return back()->with('error', __('Erro ao criar assinatura: ') . $e->getMessage());
         }
-
-        // 🔹 Define manualmente o número de dias de teste
-        $trialDays = 0; // aqui você pode colocar 0, 1, 7, etc.
-
-        $subBuilder = $request->user()
-            ->newSubscription('default', $plan->stripe_id);
-
-        if ($trialDays > 0) {
-            $subBuilder->trialDays($trialDays);
-        }
-
-        $subBuilder->create($request->token);
-
-        return redirect()->route('subscriptions.account')
-            ->with('success', __('Assinatura criada com sucesso!'));
-    } catch (\Exception $e) {
-        Log::error('Erro criando assinatura: ' . $e->getMessage());
-        return back()->with('error', __('Erro ao criar assinatura: ') . $e->getMessage());
     }
-}
 
     /**
      * Conta do assinante (detalhes + faturas)
      */
-
     public function account()
     {
         $user = Auth::user();
-        $subscription = $user?->subscription('default');
+        $subscription = $user->subscription('default');
 
         $currentPlan = null;
         $nextPayment = null;
@@ -88,13 +85,7 @@ class SubscriptionController extends Controller
         $trialDaysLeft = 0;
         $trialHours = 0;
         $trialMinutes = 0;
-        $graceDaysLeft = 0;
-        $graceHours = 0;
-        $graceMinutes = 0;
-        $remainingPayload = null;
         $card = null;
-
-        $stripe = null;
 
         if ($subscription) {
             try {
@@ -103,16 +94,17 @@ class SubscriptionController extends Controller
                 $stripeSub = null;
             }
 
-            // cálculo de trial / grace
+            // Calcula período de trial ou grace
             try {
                 $remainingPayload = SubscriptionHelper::remainingTime($subscription);
-                if (! ($remainingPayload['is_trial'] ?? false) && ! ($remainingPayload['is_grace'] ?? false)) {
+                if (!($remainingPayload['is_trial'] ?? false) && !($remainingPayload['is_grace'] ?? false)) {
                     $remainingPayload = null;
                 }
             } catch (\Throwable $e) {
                 $remainingPayload = null;
             }
 
+            // Define status da assinatura
             if ($remainingPayload && ($remainingPayload['is_trial'] ?? false)) {
                 $statusLabel = 'Período de teste';
                 $statusClass = 'bg-yellow-200 text-yellow-800';
@@ -121,26 +113,23 @@ class SubscriptionController extends Controller
                 $trialDaysLeft = $remainingPayload['days'];
                 $trialHours = $remainingPayload['hours'];
                 $trialMinutes = $remainingPayload['minutes'];
-            } elseif ($remainingPayload && ($remainingPayload['is_grace'] ?? false)) {
-                $statusLabel = 'Cancelada';
+            } elseif ($subscription->onGracePeriod() || ($stripeSub?->cancel_at_period_end ?? false)) {
+                $statusLabel = 'Cancelamento agendado';
                 $statusClass = 'bg-red-200 text-red-800';
-                $planEndDate = $remainingPayload['ends_at'];
-                $graceDaysLeft = $remainingPayload['days'];
-                $graceHours = $remainingPayload['hours'];
-                $graceMinutes = $remainingPayload['minutes'];
-            } elseif ($subscription->active()) {
+                $planEndDate = $subscription->ends_at ?? Carbon::createFromTimestamp($stripeSub->current_period_end ?? time());
+            } elseif ($subscription->active() && !$subscription->onGracePeriod()) {
                 $statusLabel = 'Assinatura ativa';
                 $statusClass = 'bg-green-200 text-green-800';
-                if (! empty($stripeSub?->current_period_end)) {
+                if (!empty($stripeSub?->current_period_end)) {
                     $planEndDate = Carbon::createFromTimestamp($stripeSub->current_period_end);
                 }
-            } elseif ($subscription->cancelled()) {
+            } elseif ($stripeSub?->status === 'canceled') {
                 $statusLabel = 'Cancelada';
                 $statusClass = 'bg-red-200 text-red-800';
-                $planEndDate = $subscription->ends_at;
+                $planEndDate = $subscription->ends_at ?? null;
             }
 
-            // plano atual
+            // Plano atual
             $item = $subscription->items()->first();
             if ($item) {
                 $planModel = Plan::where('stripe_id', $item->stripe_price)->first();
@@ -154,7 +143,7 @@ class SubscriptionController extends Controller
                 ];
             }
 
-            // próxima cobrança
+            // Próxima cobrança
             try {
                 $stripe = new StripeClient(env('STRIPE_SECRET'));
                 $preview = $stripe->invoices->createPreview([
@@ -166,44 +155,25 @@ class SubscriptionController extends Controller
                     $nextPayment = !empty($preview->next_payment_attempt)
                         ? Carbon::createFromTimestamp($preview->next_payment_attempt)
                         : $planEndDate;
-
                     $nextAmount = number_format(($preview->amount_due ?? 0)/100, 2, ',', '.');
                 }
             } catch (\Throwable $e) {
                 $nextAmount = $nextAmount ?? number_format(($subscription->items()->first()?->price ?? 0)/100, 2, ',', '.');
             }
 
-            // buscar cartão
+            // Cartão
             try {
-                if (! $stripe) {
-                    $stripe = new StripeClient(env('STRIPE_SECRET'));
-                }
-
                 $pm = null;
-
-                if (! empty($stripeSub?->default_payment_method)) {
-                    $pm = $stripe->paymentMethods->retrieve($stripeSub->default_payment_method, []);
-                }
-
-                if (! $pm && $user->stripe_id) {
-                    $customer = $stripe->customers->retrieve($user->stripe_id, []);
-                    if (! empty($customer->invoice_settings->default_payment_method)) {
-                        $pm = $stripe->paymentMethods->retrieve($customer->invoice_settings->default_payment_method, []);
+                if (!empty($stripeSub?->default_payment_method)) {
+                    $pm = $stripe->paymentMethods->retrieve($stripeSub->default_payment_method);
+                } else {
+                    $customer = $stripe->customers->retrieve($user->stripe_id);
+                    if (!empty($customer->invoice_settings->default_payment_method)) {
+                        $pm = $stripe->paymentMethods->retrieve($customer->invoice_settings->default_payment_method);
                     }
                 }
 
-                if (! $pm && $user->stripe_id) {
-                    $methods = $stripe->paymentMethods->list([
-                        'customer' => $user->stripe_id,
-                        'type' => 'card',
-                        'limit' => 1,
-                    ]);
-                    if (! empty($methods->data[0])) {
-                        $pm = $methods->data[0];
-                    }
-                }
-
-                if (! empty($pm) && ($pm->type ?? '') === 'card') {
+                if (!empty($pm) && ($pm->type ?? '') === 'card') {
                     $card = [
                         'brand' => $pm->card->brand ?? null,
                         'last4' => $pm->card->last4 ?? null,
@@ -216,7 +186,7 @@ class SubscriptionController extends Controller
             }
         }
 
-        // faturas
+        // Faturas
         $invoices = $user->invoices()->map(function ($invoice) {
             $stripeInvoice = $invoice->asStripeInvoice();
             $invoice->status_label = match ($stripeInvoice->status) {
@@ -244,29 +214,12 @@ class SubscriptionController extends Controller
             'subscription',
             'statusLabel',
             'statusClass',
-            'remainingPayload',
             'isTrial',
             'trialDaysLeft',
             'trialHours',
             'trialMinutes',
-            'graceDaysLeft',
-            'graceHours',
-            'graceMinutes',
             'card'
         ));
-    }
-
-
-
-    /**
-     * Download de fatura
-     */
-    public function invoiceDownload($invoiceId)
-    {
-        return Auth::user()->downloadInvoice($invoiceId, [
-            'vendor' => config('app.name'),
-            'product' => 'Assinatura Mensal',
-        ]);
     }
 
     /**
@@ -285,19 +238,35 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * Reativar assinatura em período de graça
+     * Reativar assinatura em período de graça ou cancelamento agendado
      */
     public function resume()
-    {
-        $subscription = auth()->user()->subscription('default');
+{
+    $user = auth()->user();
+    $subscription = $user->subscription('default');
 
-        if ($subscription && $subscription->onGracePeriod()) {
-            $subscription->resume();
-        }
+    if (!$subscription) {
+        return redirect()->route('subscriptions.account')
+            ->with('error', __('Nenhuma assinatura encontrada.'));
+    }
+
+    $stripe = new StripeClient(env('STRIPE_SECRET'));
+    $stripeSub = $subscription->asStripeSubscription();
+
+    if ($subscription->onGracePeriod() || ($stripeSub->cancel_at_period_end ?? false)) {
+        // Reativa a assinatura definindo cancel_at_period_end para false
+        $stripe->subscriptions->update($subscription->stripe_id, [
+            'cancel_at_period_end' => false,
+        ]);
 
         return redirect()->route('subscriptions.account')
             ->with('success', __('Sua assinatura foi reativada.'));
     }
+
+    return redirect()->route('subscriptions.account')
+        ->with('error', __('A assinatura não pode ser reativada.'));
+}
+
 
     /**
      * Mostrar planos disponíveis
@@ -305,65 +274,62 @@ class SubscriptionController extends Controller
     public function showPlans()
     {
         $plans = Plan::where('active', true)->get();
-
-        $plans->transform(function($plan){
-            $plan->limits = $plan->limits ? json_decode($plan->limits,true) : [];
-            $plan->features = $plan->features ? json_decode($plan->features,true) : [];
+        $plans->transform(function ($plan) {
+            $plan->limits = $plan->limits ? json_decode($plan->limits, true) : [];
+            $plan->features = $plan->features ? json_decode($plan->features, true) : [];
             return $plan;
         });
 
-        return view('subscriptions.plans', ['plans'=>$plans]);
+        return view('subscriptions.plans', ['plans' => $plans]);
     }
 
     /**
-     * Alterar plano
+     * Alterar plano da assinatura
      */
+    public function updatePlan(Request $request)
+    {
+        $request->validate([
+            'plan' => 'required',
+        ]);
 
+        $user = $request->user();
+        $plan = Plan::where('id', $request->plan)
+            ->orWhere('stripe_id', $request->plan)
+            ->first();
 
-public function updatePlan(Request $request)
-{
-    $request->validate([
-        'plan' => 'required',
-    ]);
-
-    $user = $request->user();
-
-    // Busca o plano escolhido
-    $plan = Plan::where('id', $request->plan)
-        ->orWhere('stripe_id', $request->plan)
-        ->first();
-
-    if (!$plan) {
-        return back()->with('error', 'Plano inválido.');
-    }
-
-    $subscription = $user->subscription('default');
-    if (!$subscription || !$subscription->active()) {
-        return back()->with('error', 'Você não possui uma assinatura ativa.');
-    }
-
-    try {
-        // Cria o cliente Stripe se ainda não existir
-        if (!$user->stripe_id) {
-            $user->createAsStripeCustomer();
+        if (!$plan) {
+            return back()->with('error', 'Plano inválido.');
         }
 
-        // Troca de plano, remove trial e sem proration
-        $subscription->swap($plan->stripe_id);
+        $subscription = $user->subscription('default');
+        if (!$subscription || !$subscription->active()) {
+            return back()->with('error', 'Você não possui uma assinatura ativa.');
+        }
 
-        // ⚡ Força cobrança imediata do valor total do novo plano
-        $subscription->invoice();
+        try {
+            if (!$user->stripe_id) {
+                $user->createAsStripeCustomer();
+            }
 
-        return redirect()
-            ->route('subscriptions.account')
-            ->with('success', 'Plano alterado e cobrado com sucesso!');
+            $subscription->swap($plan->stripe_id);
+            $subscription->invoice();
 
-    } catch (\Exception $e) {
-        Log::error('Erro ao trocar plano: ' . $e->getMessage());
-        return back()->with('error', 'Erro ao alterar plano: ' . $e->getMessage());
+            return redirect()->route('subscriptions.account')
+                ->with('success', 'Plano alterado e cobrado com sucesso!');
+        } catch (\Exception $e) {
+            Log::error('Erro ao trocar plano: ' . $e->getMessage());
+            return back()->with('error', 'Erro ao alterar plano: ' . $e->getMessage());
+        }
     }
-}
 
-
-
+    /**
+     * Download de fatura
+     */
+    public function invoiceDownload($invoiceId)
+    {
+        return Auth::user()->downloadInvoice($invoiceId, [
+            'vendor' => config('app.name'),
+            'product' => 'Assinatura Mensal',
+        ]);
+    }
 }

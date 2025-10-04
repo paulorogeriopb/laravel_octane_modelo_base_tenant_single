@@ -10,10 +10,12 @@
 
             @if ($subscription)
                 <div class="flex items-center justify-between mb-6">
+                    {{-- Status da assinatura --}}
                     <span class="px-3 py-1 rounded-full text-sm font-medium {{ $statusClass }}">
                         {{ $statusLabel }}
                     </span>
 
+                    {{-- Plano atual --}}
                     @if ($currentPlan)
                         <span class="text-lg font-semibold">
                             {{ $currentPlan['name'] }}
@@ -21,6 +23,7 @@
                     @endif
                 </div>
 
+                {{-- Informações detalhadas --}}
                 <div class="grid grid-cols-2 gap-6">
                     <div>
                         <p class="text-sm text-gray-500">Valor do Plano</p>
@@ -62,7 +65,6 @@
                 {{-- Métodos de pagamento --}}
                 <div class="mt-6">
                     <p class="mb-2 text-sm text-gray-500">Método de pagamento</p>
-
                     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         @if ($card)
                             <div class="flex-1 p-3 bg-gray-100 rounded shadow-sm">
@@ -72,23 +74,26 @@
                         @else
                             <p class="text-sm text-gray-500">Nenhum cartão cadastrado</p>
                         @endif
-
-                        {{-- Botão para gerenciar cartões --}}
-                        <a href="{{ route('payment-methods.index') }}" class=" btn-light">
+                        <a href="{{ route('payment-methods.index') }}" class="btn-light">
                             Gerenciar Cartões
                         </a>
                     </div>
                 </div>
 
-
-                {{-- Ações da Assinatura --}}
+                {{-- Ações da assinatura --}}
                 <div class="flex gap-4 mt-6">
-                    @if ($subscription->onGracePeriod())
+                    @php
+                        $canResume =
+                            $subscription->onGracePeriod() ||
+                            ($subscription->asStripeSubscription()->cancel_at_period_end ?? false);
+                    @endphp
+
+                    @if ($canResume)
                         <form action="{{ route('subscriptions.resume') }}" method="POST">
                             @csrf
                             <button type="submit" class="px-4 py-2 font-medium btn-success">Reativar Assinatura</button>
                         </form>
-                    @else
+                    @elseif ($subscription->active())
                         <form action="{{ route('subscriptions.cancel') }}" method="POST" class="form-cancel">
                             @csrf
                             <button type="submit" class="px-4 py-2 font-medium btn-danger">Cancelar Assinatura</button>
@@ -121,8 +126,9 @@
                             <tr class="border-t">
                                 <td class="px-3 py-2">{{ $invoice->formatted_date }}</td>
                                 <td class="px-3 py-2">R$ {{ $invoice->formatted_total }}</td>
-                                <td class="px-3 py-2"><span
-                                        class="{{ $invoice->status_class }}">{{ $invoice->status_label }}</span></td>
+                                <td class="px-3 py-2">
+                                    <span class="{{ $invoice->status_class }}">{{ $invoice->status_label }}</span>
+                                </td>
                                 <td class="px-3 py-2 text-right">
                                     <a href="{{ route('subscriptions.invoice.download', $invoice->id) }}"
                                         class="link-default">Ver Fatura</a>

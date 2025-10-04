@@ -22,7 +22,6 @@ use App\Http\Controllers\Site\SiteController;
 use App\Http\Controllers\Subscription\SubscriptionController;
 use App\Http\Controllers\Subscription\PaymentMethodController;
 
-
 /*
 |--------------------------------------------------------------------------
 | Rotas públicas
